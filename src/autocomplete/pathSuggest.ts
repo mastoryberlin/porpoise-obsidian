@@ -2,12 +2,13 @@ import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, Edito
 
 /**
  * Represents a suggestion item for path autocomplete.
- * Can be a file, folder, or parent directory reference.
+ * The name is the full relative path from vault root (including trailing / for folders).
+ * The display is what's shown in the dropdown (just the basename for files, basename/ for folders).
  */
 export interface PathSuggestion {
 	type: 'file' | 'folder' | 'parent';
-	name: string;  // For folders, includes trailing '/'
-	display: string; // Display name without trailing '/' for folders
+	name: string;  // Full relative path from vault root, with trailing / for folders
+	display: string; // Just the basename (with / for folders)
 }
 
 /**
@@ -21,15 +22,16 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 
 	/**
 	 * Check if we should trigger the suggestion.
-	 * Trigger when @ is typed and is preceded by whitespace (or at start of line).
-	 * Also continue suggestion when typing after @.
+	 * Trigger when @ is followed by a path (which may include / characters).
+	 * The path starts with @ preceded by whitespace or start of line.
 	 */
 	onTrigger(cursor: EditorPosition, editor: Editor, _file: TFile | null): EditorSuggestTriggerInfo | null {
 		const line = editor.getLine(cursor.line);
 		const lineBeforeCursor = line.substring(0, cursor.ch);
 		
 		// Find @ preceded by whitespace or start of line
-		// The @ must be in the current line before cursor
+		// The @ must be in the line, and we want to capture everything after it up to cursor
+		// This allows paths like @folder/subfolder/ to trigger suggestions
 		const atMatch = lineBeforeCursor.match(/(\s|^)@([^\s]*)$/);
 		
 		if (!atMatch) {
@@ -37,7 +39,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		}
 
 		const whitespaceBefore = atMatch[1] || '';
-		const afterAt = atMatch[2] || ''; // This is the query part
+		const afterAt = atMatch[2] || ''; // This is the path after @, may include /
 		
 		const atIndex = lineBeforeCursor.length - (afterAt.length + 1);
 		
@@ -54,26 +56,26 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		return {
 			start: start,
 			end: end,
-			query: afterAt, // This is what the user typed after @
+			query: afterAt, // This is the path being built after @
 		};
 	}
 
 	/**
-	 * Navigate to a folder path from the vault root.
-	 * The path is relative to vault root and may contain .. segments.
+	 * Navigate to a folder given a path relative to vault root.
+	 * The path may contain / separators and .. for parent directory.
 	 * Returns the folder if found, null otherwise.
 	 */
-	private navigateToFolder(basePath: string): TFolder | null {
+	private navigateToFolder(path: string): TFolder | null {
 		const vault = this.app.vault;
 		const root = vault.getRoot();
 		
 		// Handle empty path - return root
-		if (basePath.length === 0) {
+		if (path.length === 0) {
 			return root;
 		}
 		
 		// Split path into segments, handling .. and .
-		const segments = basePath.split('/').filter(s => s.length > 0);
+		const segments = path.split('/').filter(s => s.length > 0);
 		
 		let currentFolder: TFolder = root;
 		
@@ -90,13 +92,16 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 				// Current directory, do nothing
 				continue;
 			} else {
-				// Try to find the folder
+				// Try to find the folder or file
 				const child = currentFolder.children.find(
-					(child) => child instanceof TFolder && child.name === segment
-				) as TFolder | undefined;
+					(child) => child.name === segment
+				);
 				
-				if (child) {
+				if (child instanceof TFolder) {
 					currentFolder = child;
+				} else if (child instanceof TFile) {
+					// Can't navigate into a file
+					return null;
 				} else {
 					// Folder doesn't exist
 					return null;
@@ -114,27 +119,25 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 	async getSuggestions(context: EditorSuggestContext): Promise<PathSuggestion[]> {
 		const { query } = context;
 		
-		// Parse the path before the current query segment
-		// If query contains /, we need to navigate to the parent folder
+		// The query is the path after @, which may include / separators
+		// We need to split it into the base path (everything up to last /) and the filter (after last /)
 		const lastSlashIndex = query.lastIndexOf('/');
 		const basePath = lastSlashIndex >= 0 ? query.substring(0, lastSlashIndex + 1) : '';
 		const filterText = lastSlashIndex >= 0 ? query.substring(lastSlashIndex + 1) : query;
 		
-		// Navigate to the current folder
+		// Navigate to the base folder
 		const currentFolder = this.navigateToFolder(basePath);
 		
 		if (!currentFolder) {
-			// If the base path is invalid, check if we can offer ..
-			if (basePath.endsWith('../') || basePath === '..' || basePath === '../') {
-				// We're trying to go up from root, offer parent if possible
-				const segments = basePath.split('/').filter(s => s.length > 0);
-				const parentSegments = segments.slice(0, -1);
-				const parentPath = parentSegments.join('/');
-				const parentFolder = this.navigateToFolder(parentPath);
-				
-				if (parentFolder) {
-					return this.getFilteredSuggestions(parentFolder, filterText);
-				}
+			// Base path is invalid (e.g., non-existent folder or file)
+			// Try to find if we're at a valid path by going up one level
+			const upOneLevel = basePath.endsWith('/') 
+				? basePath.slice(0, -1).substring(0, Math.max(0, basePath.slice(0, -1).lastIndexOf('/') + 1))
+				: basePath.substring(0, Math.max(0, basePath.lastIndexOf('/') + 1));
+			
+			const parentFolder = this.navigateToFolder(upOneLevel);
+			if (parentFolder) {
+				return this.getFilteredSuggestions(parentFolder, filterText);
 			}
 			return [];
 		}
@@ -147,6 +150,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 	 */
 	private getFilteredSuggestions(folder: TFolder, filterText: string): PathSuggestion[] {
 		const suggestions: PathSuggestion[] = [];
+		const currentPath = this.getPathToFolder(folder);
 		
 		// Add .. to go to parent (unless at root)
 		if (!folder.isRoot()) {
@@ -154,7 +158,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 			if (parentMatch) {
 				suggestions.push({ 
 					type: 'parent', 
-					name: '..',
+					name: currentPath + '..',
 					display: '..'
 				});
 			}
@@ -162,37 +166,57 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		
 		// Add all children (files and folders)
 		for (const child of folder.children) {
-			let displayName: string;
-			let suggestionName: string;
+			const basename = child.name;
+			let fullPath: string;
 			let type: 'file' | 'folder' | 'parent';
+			let display: string;
 			
 			if (child instanceof TFolder) {
-				displayName = child.name;
-				suggestionName = child.name + '/';
+				fullPath = currentPath + basename + '/';
+				display = basename + '/';
 				type = 'folder';
 			} else if (child instanceof TFile) {
-				displayName = child.name;
-				suggestionName = child.name;
+				fullPath = currentPath + basename;
+				display = basename;
 				type = 'file';
 			} else {
 				continue;
 			}
 			
-			// Filter by query text
+			// Filter by query text (match against basename)
 			const matches = filterText === '' || 
-				displayName.startsWith(filterText) || 
-				suggestionName.startsWith(filterText);
+				basename.startsWith(filterText);
 			
 			if (matches) {
 				suggestions.push({ 
 					type: type,
-					name: suggestionName,
-					display: displayName
+					name: fullPath,
+					display: display
 				});
 			}
 		}
 		
 		return suggestions;
+	}
+
+	/**
+	 * Get the relative path from vault root to a folder.
+	 * Returns path with trailing /.
+	 */
+	private getPathToFolder(folder: TFolder): string {
+		if (folder.isRoot()) {
+			return '';
+		}
+		
+		const pathParts: string[] = [];
+		let current: TFolder | null = folder;
+		
+		while (current && !current.isRoot()) {
+			pathParts.unshift(current.name + '/');
+			current = current.parent as TFolder | null;
+		}
+		
+		return pathParts.join('');
 	}
 
 	/**
@@ -214,7 +238,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 
 	/**
 	 * Handle selection of a suggestion.
-	 * This is called when user clicks, presses TAB/ENTER, or presses . (for folders).
+	 * This is called when user clicks, presses ENTER, or TAB.
 	 */
 	selectSuggestion(suggestion: PathSuggestion, evt: MouseEvent | KeyboardEvent): void {
 		// Don't do anything on Escape
@@ -242,68 +266,33 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		const whitespaceBefore = atMatch[1] || '';
 		const currentQuery = atMatch[2] || '';
 		
-		// Calculate the start position (before the @)
+		// Calculate the start position (before the whitespace before @)
 		const replaceStartCh = cursor.ch - (currentQuery.length + 1 + whitespaceBefore.length);
 		
-		// Build the new path
-		let newPath: string;
+		// Build the new text to insert: @ + suggestion.name
+		// suggestion.name already contains the full path from vault root
+		const newText = `@${suggestion.name}`;
 		
-		// Handle the case where currentQuery has path segments
-		const lastSlashIndex = currentQuery.lastIndexOf('/');
-		const basePath = lastSlashIndex >= 0 ? currentQuery.substring(0, lastSlashIndex + 1) : '';
-		
-		if (basePath.length === 0) {
-			// No path segments yet, just append the suggestion
-			newPath = suggestion.name;
-		} else {
-			// We have a base path, need to handle it properly
-			// Remove any partial text after the last /
-			const cleanBase = currentQuery.substring(0, lastSlashIndex + 1);
-			
-			// Check if suggestion already includes what was typed
-			const suggestionBase = suggestion.type === 'folder' 
-				? suggestion.name.slice(0, -1) 
-				: suggestion.name;
-			
-			const partialMatch = currentQuery.substring(lastSlashIndex + 1);
-			
-			// If the suggestion matches what was typed, just use the suggestion
-			if (suggestionBase === partialMatch || suggestion.name === partialMatch) {
-				newPath = cleanBase + suggestion.name;
-			} else {
-				newPath = cleanBase + suggestion.name;
-			}
-		}
-
-		// Replace the text from @ onwards
+		// Replace from before the @ to the end of the current query
 		editor.replaceRange(
-			`@${newPath}`,
+			newText,
 			{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
 			{ line: end.line, ch: end.ch },
 			'path-autocomplete'
 		);
 		
-		// Check if we should reopen the suggest for chaining
-		const isFolder = suggestion.type === 'folder';
-		
 		// For folders, reopen the suggest to show subdirectories
-		if (isFolder) {
-			// Close the current suggest
-			this.close();
-			
+		if (suggestion.type === 'folder') {
 			// Position cursor at the end of the inserted text
 			const newCursorPos = {
 				line: cursor.line,
-				ch: replaceStartCh + whitespaceBefore.length + 1 + newPath.length,
+				ch: replaceStartCh + whitespaceBefore.length + newText.length,
 			};
 			
-			// Move cursor and reopen suggest
+			// Move cursor and the suggest will automatically reopen
+			// because the cursor is now after a path ending with /
 			setTimeout(() => {
 				editor.setCursor(newCursorPos);
-				// The onTrigger should fire again because we have @.../ pattern
-				// But we need to trigger it manually since we're after the /
-				// So we'll call open() to reopen the suggest
-				this.open();
 			}, 10);
 		}
 	}
