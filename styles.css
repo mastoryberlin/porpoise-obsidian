@@ -1,8 +1,38 @@
-/*
+/* Porpoise Path Autocomplete Styles */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* Base suggestion styling */
+.porpoise-path-suggestion {
+	padding: 2px 8px;
+	font-size: 13px;
+}
 
-If your plugin does not need CSS, delete this file.
+/* Folder suggestion - with folder icon or different color */
+.porpoise-path-folder {
+	color: var(--text-muted);
+}
 
-*/
+.porpoise-path-folder::before {
+	content: "📁 ";
+	margin-right: 4px;
+}
+
+/* Parent directory suggestion */
+.porpoise-path-parent {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.porpoise-path-parent::before {
+	content: "↑ ";
+	margin-right: 4px;
+}
+
+/* File suggestion */
+.porpoise-path-file {
+	color: var(--text-normal);
+}
+
+.porpoise-path-file::before {
+	content: "📄 ";
+	margin-right: 4px;
+}
