@@ -6,6 +6,12 @@
 	font-size: 13px;
 }
 
+/* Active/highlighted suggestion */
+.porpoise-path-suggestion.porpoise-path-active,
+.porpoise-path-suggestion:hover {
+	background-color: var(--background-modifier-hover);
+}
+
 /* Folder suggestion - with folder icon or different color */
 .porpoise-path-folder {
 	color: var(--text-muted);
@@ -35,4 +41,17 @@
 .porpoise-path-file::before {
 	content: "📄 ";
 	margin-right: 4px;
+}
+
+/* Spellchecking: disable for @path references */
+/* We use a CSS class that will be applied to the @path text in the editor */
+.porpoise-path-ref {
+	spellcheck: false;
+}
+
+/* Invalid path (non-existent) - red underline */
+.porpoise-path-invalid {
+	text-decoration: underline wavy red;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 2px;
 }
