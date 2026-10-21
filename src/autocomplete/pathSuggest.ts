@@ -16,8 +16,69 @@ export interface PathSuggestion {
  * Shows relative paths from vault root, one level at a time.
  */
 export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
+	private currentSuggestions: PathSuggestion[] = [];
+	private activeIndex: number = -1;
+	private isOpen: boolean = false;
+	
 	constructor(app: App) {
 		super(app);
+		
+		// Set up global key listener for TAB
+		// We use capture phase to intercept before other handlers
+		document.addEventListener('keydown', this.handleGlobalKeydown.bind(this), true);
+	}
+
+	/**
+	 * Handle keydown events globally to intercept TAB when suggest is open
+	 */
+	private handleGlobalKeydown(evt: KeyboardEvent): void {
+		// Only handle TAB when our suggest is open
+		if (!this.isOpen) {
+			return;
+		}
+		
+		// Intercept TAB key
+		if (evt.key === 'Tab') {
+			evt.preventDefault();
+			
+			// Select the first suggestion or the active one
+			if (this.currentSuggestions.length > 0) {
+				// If we have a tracked active index, use it; otherwise use index 0
+				const index = this.activeIndex >= 0 && this.activeIndex < this.currentSuggestions.length 
+					? this.activeIndex 
+					: 0;
+				
+				this.selectSuggestion(this.currentSuggestions[index] as PathSuggestion, evt);
+			}
+		}
+		
+		// Handle / key for folder selection
+		// When suggest is open and user presses /, it should select the first folder suggestion
+		if (evt.key === '/' && this.isOpen) {
+			// Find the first folder suggestion
+			const folderSuggestion = this.currentSuggestions.find(s => s.type === 'folder');
+			if (folderSuggestion) {
+				evt.preventDefault();
+				this.selectSuggestion(folderSuggestion as PathSuggestion, evt);
+			}
+		}
+	}
+
+	/**
+	 * Override open to track state
+	 */
+	open(): void {
+		super.open();
+		this.isOpen = true;
+	}
+
+	/**
+	 * Override close to track state
+	 */
+	close(): void {
+		super.close();
+		this.isOpen = false;
+		this.activeIndex = -1;
 	}
 
 	/**
@@ -142,7 +203,9 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 			return [];
 		}
 		
-		return this.getFilteredSuggestions(currentFolder, filterText);
+		const suggestions = this.getFilteredSuggestions(currentFolder, filterText);
+		this.currentSuggestions = suggestions;
+		return suggestions;
 	}
 
 	/**
