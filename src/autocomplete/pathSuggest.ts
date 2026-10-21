@@ -19,51 +19,56 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 	constructor(app: App) {
 		super(app);
 		
-		// Set up key listener for Ctrl+Backspace
-		// This will remove the last path segment when in a path context
-		this.app.workspace.containerEl.addEventListener('keydown', this.handleKeydown.bind(this));
+		// Set up key listener for Ctrl+Backspace, TAB, and /
+		this.app.workspace.containerEl.addEventListener('keydown', this.handleKeydown.bind(this), true);
 	}
 
 	/**
-	 * Handle keydown events for Ctrl+Backspace
-	 * When Ctrl+Backspace is pressed after @path/, remove the last segment
+	 * Handle keydown events for Ctrl+Backspace, TAB, and /
 	 */
 	private handleKeydown(evt: KeyboardEvent): void {
+		// Only handle when we have an active context
+		if (!this.context) {
+			return;
+		}
+		
+		const editor = this.context.editor;
+		const cursor = this.context.start;
+		
+		if (!editor || !cursor) {
+			return;
+		}
+		
+		const line = editor.getLine(cursor.line);
+		const textBeforeCursor = line.substring(0, cursor.ch);
+		
+		// Check if we're in a path context: text before cursor contains @
+		const atMatch = textBeforeCursor.match(/(\s|^)@([^\s]*)$/);
+		if (!atMatch) {
+			// Not in path context
+			return;
+		}
+		
+		const whitespaceBefore = atMatch[1] || '';
+		const currentPath = atMatch[2] || '';
+		
 		// Handle Ctrl+Backspace
 		if (evt.ctrlKey && evt.key === 'Backspace') {
-			const editor = this.context?.editor;
-			const cursor = this.context?.start;
-			
-			if (!editor || !cursor) {
-				return;
-			}
-			
-			const line = editor.getLine(cursor.line);
-			const textBeforeCursor = line.substring(0, cursor.ch);
-			
-			// Check if we're in a path context: text before cursor ends with @...
-			const atMatch = textBeforeCursor.match(/(\s|^)@([^\s]*)$/);
-			if (!atMatch) {
-				return;
-			}
-			
-			const whitespaceBefore = atMatch[1] || '';
-			const currentPath = atMatch[2] || '';
-			
 			// Only handle if we have a path with at least one segment
 			if (currentPath.length === 0) {
 				return;
 			}
 			
 			evt.preventDefault();
+			evt.stopImmediatePropagation();
 			
 			// Find the last / in the path
 			const lastSlashIndex = currentPath.lastIndexOf('/');
+			const replaceStartCh = cursor.ch - (currentPath.length + 1 + whitespaceBefore.length);
 			
 			if (lastSlashIndex >= 0) {
-				// Remove everything after the last /
+				// Remove everything from the last / onwards (but keep segments before it)
 				const newPath = currentPath.substring(0, lastSlashIndex);
-				const replaceStartCh = cursor.ch - (currentPath.length + 1 + whitespaceBefore.length);
 				
 				editor.replaceRange(
 					`@${newPath}`,
@@ -79,9 +84,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 				};
 				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			} else {
-				// No / in path, remove the entire path (go back to @)
-				const replaceStartCh = cursor.ch - (currentPath.length + 1 + whitespaceBefore.length);
-				
+				// No / in path - remove the entire path segment (but keep @)
 				editor.replaceRange(
 					`@`,
 					{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
@@ -96,6 +99,31 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 				};
 				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			}
+		}
+		
+		// Handle TAB and / keys by simulating ENTER
+		if (evt.key === 'Tab' || evt.key === '/') {
+			evt.preventDefault();
+			evt.stopImmediatePropagation();
+			
+			// Create and dispatch an ENTER event
+			const enterEvt = new KeyboardEvent('keydown', {
+				key: 'Enter',
+				code: 'Enter',
+				charCode: 13,
+				keyCode: 13,
+				bubbles: true,
+				cancelable: true
+			});
+			
+			// Try to find the suggest popup and dispatch there
+			const suggestPopup = document.querySelector('.suggest-popover');
+			if (suggestPopup) {
+				suggestPopup.dispatchEvent(enterEvt);
+			}
+			
+			// Also try document
+			document.dispatchEvent(enterEvt);
 		}
 	}
 
@@ -241,7 +269,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 			const lastSlashIndex = currentQuery.lastIndexOf('/');
 			
 			if (lastSlashIndex >= 0) {
-				// Remove everything from the last / onwards
+				// Remove everything from the last / onwards (but keep segments before it)
 				const newPath = currentQuery.substring(0, lastSlashIndex);
 				
 				editor.replaceRange(
@@ -258,7 +286,8 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 				};
 				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			} else {
-				// No / in path, just remove everything (go back to @)
+				// No / in currentQuery - this shouldn't normally happen when .. is shown
+				// but if it does, remove the entire path (go back to @)
 				editor.replaceRange(
 					`@`,
 					{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
