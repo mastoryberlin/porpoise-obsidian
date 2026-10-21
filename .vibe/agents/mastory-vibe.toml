@@ -1,0 +1,73 @@
+display_name = "Mastory-Vibe"
+description = "Tailored coding agent to assist the development of Mastory."
+safety = "destructive"
+auto_approve = true
+system_prompt_id = "mastory"
+enabled_tools = [
+  "ask_user_question",
+  "bash",
+  "exit_plan_mode",
+  "grep",
+  "read_file",
+  "search_replace",
+  "skill",
+  "task",
+  "todo",
+  "web_fetch",
+  "web_search",
+  "write_file",
+]
+skill_paths = [ # Options: "safe" | "neutral" | "destructive" | "yolo"
+  "./layers/00.local/skills",
+  "./layers/01.nuxthub/skills",
+  "./layers/07.design/skills",
+  "./layers/10.editor/skills",
+
+]
+
+[tools.ask_user_question]
+permission = "always"
+
+[tools.bash]
+permission = "always"
+allow = ["git status", "find"]
+
+[tools.exit_plan_mode]
+permission = "always"
+
+[tools.grep]
+permission = "always"
+allowlist = [
+  "/home/felixs/Mastory/app/_aidd/*",
+  "/home/felixs/Mastory/app/_plans/*",
+  "/home/felixs/Mastory/app/*/.plans/*",
+]
+
+[tools.read_file]
+permission = "always"
+allowlist = [
+  "/home/felixs/Mastory/app/_aidd/*",
+  "/home/felixs/Mastory/app/_plans/*",
+  "/home/felixs/Mastory/app/*/.plans/*",
+]
+
+[tools.search_replace]
+permission = "always"
+
+[tools.skill]
+permission = "always"
+
+[tools.task]
+permission = "always"
+
+[tools.todo]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"
+
+[tools.web_search]
+permission = "always"
+
+[tools.write_file]
+permission = "always"

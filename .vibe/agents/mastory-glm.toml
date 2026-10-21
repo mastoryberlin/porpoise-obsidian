@@ -1,0 +1,73 @@
+display_name = "Porpoise-GLM"
+description = "Tailored coding agent to assist the development of Porpoise."
+safety = "destructive"
+auto_approve = true
+system_prompt_id = "porpoise"
+enabled_tools = [
+  "ask_user_question",
+  "bash",
+  "exit_plan_mode",
+  "grep",
+  "read_file",
+  "search_replace",
+  "skill",
+  "task",
+  "todo",
+  "web_fetch",
+  "web_search",
+  "write_file",
+]
+
+[tools.ask_user_question]
+permission = "always"
+
+[tools.bash]
+permission = "always"
+allow = ["git status", "find"]
+
+[tools.exit_plan_mode]
+permission = "always"
+
+[tools.grep]
+permission = "always"
+
+[tools.read_file]
+permission = "always"
+
+[tools.search_replace]
+permission = "always"
+
+[tools.skill]
+permission = "always"
+
+[tools.task]
+permission = "always"
+
+[tools.todo]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"
+
+[tools.web_search]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+
+[[providers]]
+name = "z.ai"
+api_base = "https://api.z.ai/api/coding/paas/v4"
+api_key_env_var = "ZAI_API_KEY"
+api_style = "openai"
+backend = "generic"
+
+[[models]]
+name = "glm-5.3"
+provider = "z.ai"
+alias = "glm-5.3"
+temperature = 0.2
+input_price = 0.0
+output_price = 0.0
+
+active_model = "glm-5.3"
