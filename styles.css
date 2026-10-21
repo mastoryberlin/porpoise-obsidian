@@ -4,15 +4,20 @@
 .porpoise-path-suggestion {
 	padding: 2px 8px;
 	font-size: 13px;
+	cursor: pointer;
 }
 
 /* Active/highlighted suggestion */
-.porpoise-path-suggestion.porpoise-path-active,
+.porpoise-path-active {
+	background-color: var(--background-modifier-hover) !important;
+}
+
+/* Hover state */
 .porpoise-path-suggestion:hover {
 	background-color: var(--background-modifier-hover);
 }
 
-/* Folder suggestion - with folder icon or different color */
+/* Folder suggestion */
 .porpoise-path-folder {
 	color: var(--text-muted);
 }
@@ -43,13 +48,17 @@
 	margin-right: 4px;
 }
 
-/* Spellchecking: disable for @path references */
-/* We use a CSS class that will be applied to the @path text in the editor */
-.porpoise-path-ref {
+/* Spellchecking: try to disable for code blocks */
+/* Note: This may not work in all browsers for inline text */
+code, pre {
 	spellcheck: false;
 }
 
-/* Invalid path (non-existent) - red underline */
+/* For @path references specifically, we'll need editor integration */
+/* This is a known limitation - spellchecking is controlled by the browser */
+/* and cannot be easily disabled for specific text ranges in the editor */
+
+/* Invalid path styling (for future implementation) */
 .porpoise-path-invalid {
 	text-decoration: underline wavy red;
 	text-decoration-thickness: 1px;
