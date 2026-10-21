@@ -1,4 +1,5 @@
-import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, TFile, TFolder, TAbstractFile } from 'obsidian';
+import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, TFile, TFolder } from 'obsidian';
+import { MarkdownView } from 'obsidian';
 
 /**
  * Represents a suggestion item for path autocomplete.
@@ -20,89 +21,109 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		super(app);
 		
 		// Set up key listener for Ctrl+Backspace, TAB, and /
-		this.app.workspace.containerEl.addEventListener('keydown', this.handleKeydown.bind(this), true);
+		// Use capture phase to intercept before other handlers
+		document.addEventListener('keydown', this.handleKeydown.bind(this), { capture: true });
 	}
 
 	/**
 	 * Handle keydown events for Ctrl+Backspace, TAB, and /
 	 */
 	private handleKeydown(evt: KeyboardEvent): void {
-		// Only handle when we have an active context
-		if (!this.context) {
+		// Handle Ctrl+Backspace first - it should work regardless of suggest state
+		// This needs to work even when the suggest popup is NOT open
+		if (evt.ctrlKey && evt.key === 'Backspace') {
+			const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeLeaf) {
+				const editor = activeLeaf.editor;
+				const cursor = editor.getCursor();
+				const line = editor.getLine(cursor.line);
+				const textBeforeCursor = line.substring(0, cursor.ch);
+				const atMatch = textBeforeCursor.match(/(\s|^)@([^\s]*)$/);
+				
+				if (atMatch) {
+					evt.preventDefault();
+					evt.stopImmediatePropagation();
+					
+					const whitespaceBefore = atMatch[1] || '';
+					const currentPath = atMatch[2] || '';
+					
+					// Only handle if we have a path with at least one segment
+					if (currentPath.length > 0) {
+						const lastSlashIndex = currentPath.lastIndexOf('/');
+						const replaceStartCh = cursor.ch - (currentPath.length + 1 + whitespaceBefore.length);
+						
+						if (lastSlashIndex >= 0) {
+							// Remove everything from the last / onwards (including the /)
+							const newPath = currentPath.substring(0, lastSlashIndex);
+							
+							editor.replaceRange(
+								`@${newPath}`,
+								{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
+								{ line: cursor.line, ch: cursor.ch },
+								'path-autocomplete-ctrl-backspace'
+							);
+							
+							const newCursorPos = {
+								line: cursor.line,
+								ch: replaceStartCh + whitespaceBefore.length + 1 + newPath.length,
+							};
+							setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+						} else {
+							// No / in path - remove everything but @
+							editor.replaceRange(
+								`@`,
+								{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
+								{ line: cursor.line, ch: cursor.ch },
+								'path-autocomplete-ctrl-backspace'
+							);
+							
+							const newCursorPos = {
+								line: cursor.line,
+								ch: replaceStartCh + whitespaceBefore.length + 1,
+							};
+							setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+						}
+					}
+				}
+			}
 			return;
 		}
 		
-		const editor = this.context.editor;
-		const cursor = this.context.start;
+		// Handle TAB and / when suggest popup is open
+		const editor = this.context?.editor;
+		const suggestCursor = this.context?.start;
 		
-		if (!editor || !cursor) {
+		if (!editor || !suggestCursor) {
+			// If no context, check if TAB or / should still trigger suggest
+			if (evt.key === 'Tab' || evt.key === '/') {
+				// Try to find an open suggest popup and trigger ENTER
+				const suggestPopup = document.querySelector('.suggest-popover');
+				if (suggestPopup) {
+					evt.preventDefault();
+					evt.stopImmediatePropagation();
+					
+					const enterEvt = new KeyboardEvent('keydown', {
+						key: 'Enter',
+						code: 'Enter',
+						charCode: 13,
+						keyCode: 13,
+						bubbles: true,
+						cancelable: true
+					});
+					suggestPopup.dispatchEvent(enterEvt);
+				}
+			}
 			return;
 		}
 		
-		const line = editor.getLine(cursor.line);
-		const textBeforeCursor = line.substring(0, cursor.ch);
+		const line = editor.getLine(suggestCursor.line);
+		const textBeforeCursor = line.substring(0, suggestCursor.ch);
 		
 		// Check if we're in a path context: text before cursor contains @
 		const atMatch = textBeforeCursor.match(/(\s|^)@([^\s]*)$/);
-		if (!atMatch) {
-			// Not in path context
-			return;
-		}
 		
-		const whitespaceBefore = atMatch[1] || '';
-		const currentPath = atMatch[2] || '';
-		
-		// Handle Ctrl+Backspace
-		if (evt.ctrlKey && evt.key === 'Backspace') {
-			// Only handle if we have a path with at least one segment
-			if (currentPath.length === 0) {
-				return;
-			}
-			
-			evt.preventDefault();
-			evt.stopImmediatePropagation();
-			
-			// Find the last / in the path
-			const lastSlashIndex = currentPath.lastIndexOf('/');
-			const replaceStartCh = cursor.ch - (currentPath.length + 1 + whitespaceBefore.length);
-			
-			if (lastSlashIndex >= 0) {
-				// Remove everything from the last / onwards (but keep segments before it)
-				const newPath = currentPath.substring(0, lastSlashIndex);
-				
-				editor.replaceRange(
-					`@${newPath}`,
-					{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
-					{ line: cursor.line, ch: cursor.ch },
-					'path-autocomplete-ctrl-backspace'
-				);
-				
-				// Move cursor to end of new path
-				const newCursorPos = {
-					line: cursor.line,
-					ch: replaceStartCh + whitespaceBefore.length + 1 + newPath.length,
-				};
-				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
-			} else {
-				// No / in path - remove the entire path segment (but keep @)
-				editor.replaceRange(
-					`@`,
-					{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
-					{ line: cursor.line, ch: cursor.ch },
-					'path-autocomplete-ctrl-backspace'
-				);
-				
-				// Move cursor after @
-				const newCursorPos = {
-					line: cursor.line,
-					ch: replaceStartCh + whitespaceBefore.length + 1,
-				};
-				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
-			}
-		}
-		
-		// Handle TAB and / keys by simulating ENTER
-		if (evt.key === 'Tab' || evt.key === '/') {
+		// Handle TAB and / keys by simulating ENTER (when suggest is open)
+		if ((evt.key === 'Tab' || evt.key === '/') && atMatch) {
 			evt.preventDefault();
 			evt.stopImmediatePropagation();
 			
@@ -181,7 +202,9 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		const basePath = lastSlashIndex >= 0 ? query.substring(0, lastSlashIndex + 1) : '';
 		const filterText = lastSlashIndex >= 0 ? query.substring(lastSlashIndex + 1) : query;
 		
-		const currentFolder = this.navigateToFolder(basePath);
+		// Special case: if query ends with a file path (no trailing /), we need to navigate to its parent
+		// to show .. and allow navigation up
+		const currentFolder = this.navigateToFolderWithFileFallback(basePath, filterText);
 		if (!currentFolder) {
 			const upOneLevel = basePath.endsWith('/')
 				? basePath.slice(0, -1).substring(0, Math.max(0, basePath.slice(0, -1).lastIndexOf('/') + 1))
@@ -194,16 +217,66 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		return this.getFilteredSuggestions(currentFolder, filterText);
 	}
 
+	/**
+	 * Navigate to folder, but if the path points to a file, navigate to its parent folder
+	 * This allows showing .. even after selecting a file
+	 */
+	private navigateToFolderWithFileFallback(path: string, filterText: string): TFolder | null {
+		const vault = this.app.vault;
+		const root = vault.getRoot();
+		if (path.length === 0) return root;
+		
+		const segments = path.split('/').filter(s => s.length > 0);
+		let currentFolder: TFolder = root;
+		
+		for (let i = 0; i < segments.length; i++) {
+			const segment = segments[i];
+			
+			if (segment === '..') {
+				if (currentFolder && !currentFolder.isRoot()) {
+					currentFolder = currentFolder.parent as TFolder;
+				} else {
+					return null;
+				}
+			} else if (segment === '.') {
+				continue;
+			} else {
+				const child = currentFolder.children.find(c => c.name === segment);
+				if (child instanceof TFolder) {
+					currentFolder = child;
+				} else if (child instanceof TFile) {
+					// If this is the last segment and it's a file, navigate to its parent
+					// and treat the file as a filter
+					if (i === segments.length - 1) {
+						// This is the last segment and it's a file
+						// Stay in currentFolder (parent of the file)
+						// The filterText will be the file name
+						return currentFolder;
+					} else {
+						// File in the middle of path - invalid
+						return null;
+					}
+				} else {
+					return null;
+				}
+			}
+		}
+		
+		return currentFolder;
+	}
+
 	private getFilteredSuggestions(folder: TFolder, filterText: string): PathSuggestion[] {
 		const suggestions: PathSuggestion[] = [];
 		const currentPath = this.getPathToFolder(folder);
 		
+		// Always add .. if not at root (even for files)
 		if (!folder.isRoot()) {
 			if (filterText === '' || '..'.startsWith(filterText)) {
 				suggestions.push({ type: 'parent', name: '..', display: '..' });
 			}
 		}
 		
+		// Add all children (files and folders)
 		for (const child of folder.children) {
 			const basename = child.name;
 			if (child instanceof TFolder) {
@@ -265,11 +338,9 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		
 		// Special handling for .. (parent directory)
 		if (suggestion.type === 'parent') {
-			// Find the last / in the current query to determine what to remove
 			const lastSlashIndex = currentQuery.lastIndexOf('/');
 			
 			if (lastSlashIndex >= 0) {
-				// Remove everything from the last / onwards (but keep segments before it)
 				const newPath = currentQuery.substring(0, lastSlashIndex);
 				
 				editor.replaceRange(
@@ -279,15 +350,13 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 					'path-autocomplete'
 				);
 				
-				// Move cursor to end of new path and reopen suggest
 				const newCursorPos = {
 					line: cursor.line,
 					ch: replaceStartCh + whitespaceBefore.length + 1 + newPath.length,
 				};
 				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			} else {
-				// No / in currentQuery - this shouldn't normally happen when .. is shown
-				// but if it does, remove the entire path (go back to @)
+				// No / in currentQuery - remove everything but @
 				editor.replaceRange(
 					`@`,
 					{ line: cursor.line, ch: replaceStartCh + whitespaceBefore.length },
@@ -295,7 +364,6 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 					'path-autocomplete'
 				);
 				
-				// Move cursor after @ and reopen suggest
 				const newCursorPos = {
 					line: cursor.line,
 					ch: replaceStartCh + whitespaceBefore.length + 1,
@@ -303,7 +371,6 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			}
 		} else {
-			// Regular file/folder selection
 			const newText = `@${suggestion.name}`;
 			
 			editor.replaceRange(
@@ -314,6 +381,14 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 			);
 			
 			if (suggestion.type === 'folder') {
+				const newCursorPos = {
+					line: cursor.line,
+					ch: replaceStartCh + whitespaceBefore.length + newText.length,
+				};
+				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+			} else if (suggestion.type === 'file') {
+				// For files, also keep the suggest open or reopen it to show ..
+				// Move cursor to end of path
 				const newCursorPos = {
 					line: cursor.line,
 					ch: replaceStartCh + whitespaceBefore.length + newText.length,
