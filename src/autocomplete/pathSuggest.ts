@@ -18,82 +18,98 @@ export interface PathSuggestion {
  */
 export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 	private currentSuggestions: PathSuggestion[] = [];
-	private activeIndex: number = -1;
 	private isOpen: boolean = false;
 	
 	constructor(app: App) {
 		super(app);
-		document.addEventListener('keydown', this.handleGlobalKeydown.bind(this), true);
+		
+		// Set up key listener for TAB and / on the app container
+		// This should work better than document-level listener
+		this.app.workspace.containerEl.addEventListener('keydown', this.handleKeydown.bind(this));
 	}
 
-	private handleGlobalKeydown(evt: KeyboardEvent): void {
-		if (!this.isOpen) return;
+	/**
+	 * Handle keydown events to intercept TAB and / when suggest is open
+	 */
+	private handleKeydown(evt: KeyboardEvent): void {
+		// Only handle TAB and / when our suggest is open
+		if (!this.isOpen) {
+			return;
+		}
 		
-		// TAB: select active suggestion
+		// Intercept TAB key - find the active suggestion from DOM
 		if (evt.key === 'Tab') {
 			evt.preventDefault();
-			const idx = this.activeIndex;
-			if (idx >= 0 && idx < this.currentSuggestions.length) {
-				this.selectSuggestion(this.currentSuggestions[idx]!, evt);
-			} else if (this.currentSuggestions.length > 0) {
-				this.selectSuggestion(this.currentSuggestions[0]!, evt);
+			const activeSuggestion = this.getActiveSuggestionFromDOM();
+			if (activeSuggestion) {
+				this.selectSuggestion(activeSuggestion, evt);
 			}
 		}
 		
-		// / key: select active folder or first folder
+		// Handle / key - select active folder suggestion
 		if (evt.key === '/') {
-			let folderSuggestion: PathSuggestion | null = null;
-			if (this.activeIndex >= 0 && this.activeIndex < this.currentSuggestions.length) {
-				const active = this.currentSuggestions[this.activeIndex];
-				if (active && active.type === 'folder') {
-					folderSuggestion = active;
-				}
-			}
+			const activeSuggestion = this.getActiveSuggestionFromDOM();
+			// If active suggestion is a folder, use it; otherwise find first folder
+			let folderSuggestion = activeSuggestion?.type === 'folder' ? activeSuggestion : null;
 			if (!folderSuggestion) {
-				folderSuggestion = this.currentSuggestions.find((s): s is PathSuggestion => s.type === 'folder') || null;
+				folderSuggestion = this.currentSuggestions.find(s => s.type === 'folder') || null;
 			}
 			if (folderSuggestion) {
 				evt.preventDefault();
 				this.selectSuggestion(folderSuggestion, evt);
 			}
 		}
-		
-		// Arrow keys: navigate suggestions
-		if (evt.key === 'ArrowDown') {
-			evt.preventDefault();
-			this.setActiveIndex(this.activeIndex + 1);
-		}
-		if (evt.key === 'ArrowUp') {
-			evt.preventDefault();
-			this.setActiveIndex(this.activeIndex - 1);
-		}
 	}
 
-	private setActiveIndex(index: number): void {
-		const count = this.currentSuggestions.length;
-		if (count === 0) {
-			this.activeIndex = -1;
-			return;
-		}
-		this.activeIndex = Math.max(0, Math.min(index, count - 1));
-		for (let i = 0; i < this.currentSuggestions.length; i++) {
-			const el = this.currentSuggestions[i]?.element;
-			if (el) {
-				el.toggleClass('porpoise-path-active', i === this.activeIndex);
+	/**
+	 * Get the currently active/hovered suggestion from the DOM
+	 * The framework likely adds an active class to the active suggestion element
+	 */
+	private getActiveSuggestionFromDOM(): PathSuggestion | null {
+		// Try to find the active suggestion by looking for DOM elements with active class
+		// Obsidian's suggest popup might use .is-active or .active or similar
+		const activeEl = document.querySelector('.suggest-popover .is-active, .suggest-popover .active');
+		if (activeEl) {
+			// Find which suggestion this element corresponds to
+			for (const suggestion of this.currentSuggestions) {
+				if (suggestion.element === activeEl) {
+					return suggestion;
+				}
 			}
 		}
+		
+		// If no active class found, try to find hovered element
+		const hoveredEl = document.querySelector('.suggest-popover .porpoise-path-suggestion:hover');
+		if (hoveredEl) {
+			for (const suggestion of this.currentSuggestions) {
+				if (suggestion.element === hoveredEl) {
+					return suggestion;
+				}
+			}
+		}
+		
+		// If we can't find active, return the first suggestion as fallback
+		if (this.currentSuggestions.length > 0) {
+			return this.currentSuggestions[0]!;
+		}
+		
+		return null;
 	}
 
+	/**
+	 * Override open to track state
+	 */
 	open(): void {
 		super.open();
 		this.isOpen = true;
-		this.activeIndex = -1;
 	}
 
+	/**
+	 * Override close to track state
+	 */
 	close(): void {
 		super.close();
 		this.isOpen = false;
-		this.activeIndex = -1;
 		this.currentSuggestions = [];
 	}
 
@@ -217,16 +233,6 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		} else {
 			el.addClass('porpoise-path-file');
 		}
-		
-		el.onmouseenter = () => {
-			const idx = this.currentSuggestions.findIndex(s => s.element === el);
-			if (idx >= 0) this.setActiveIndex(idx);
-		};
-		
-		el.onclick = () => {
-			const idx = this.currentSuggestions.findIndex(s => s.element === el);
-			if (idx >= 0) this.activeIndex = idx;
-		};
 	}
 
 	selectSuggestion(suggestion: PathSuggestion, evt: MouseEvent | KeyboardEvent): void {
