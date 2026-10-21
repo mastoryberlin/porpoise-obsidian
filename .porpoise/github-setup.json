@@ -1,0 +1,50 @@
+{
+  "org": "mastoryberlin",
+  "repo": "porpoise-obsidian",
+  "project": {
+    "number": 9,
+    "id": "PVT_kwDOAymJMM4Bn6R4",
+    "statusField": {
+      "id": 429701962,
+      "options": [
+        {
+          "name": "Backlog",
+          "id": "f75ad846"
+        },
+        {
+          "name": "Postponed",
+          "id": "95304ae9"
+        },
+        {
+          "name": "Planned for this week",
+          "id": "d29b51c1"
+        },
+        {
+          "name": "Ready for pick-up",
+          "id": "61e4505c"
+        },
+        {
+          "name": "In progress",
+          "id": "47fc9ee4"
+        },
+        {
+          "name": "Review and test",
+          "id": "95c958a9"
+        },
+        {
+          "name": "Merged",
+          "id": "df73e18b"
+        },
+        {
+          "name": "Done",
+          "id": "98236657"
+        }
+      ]
+    }
+  },
+  "issues": {
+    "labels": [
+      "dry"
+    ]
+  }
+}

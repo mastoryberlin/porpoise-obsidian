@@ -1,0 +1,10 @@
+{
+  "$schema": "./.porpoise/config.json",
+  "github": {
+    "org": "mastoryberlin",
+    "repo": "porpoise-obsidian",
+    "project": {
+      "number": 9
+    }
+  }
+}

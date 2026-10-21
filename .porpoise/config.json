@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "folders": {
+      "type": "object",
+      "properties": {
+        "prompts": {
+          "default": "prompts",
+          "type": "string"
+        },
+        "prepFiles": {
+          "default": "prep",
+          "type": "string"
+        },
+        "labelStubs": {
+          "default": "labels",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "github": {
+      "type": "object",
+      "properties": {
+        "accessTokenEnvVar": {
+          "default": "GITHUB_PAT",
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "project": {
+          "type": "object",
+          "properties": {
+            "number": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "statusFieldName": {
+              "default": "Status",
+              "type": "string"
+            }
+          },
+          "required": [
+            "number"
+          ],
+          "additionalProperties": false
+        },
+        "labels": {
+          "type": "object",
+          "properties": {
+            "sort": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "$ref": "#/definitions/label"
+              }
+            },
+            "imply": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "$ref": "#/definitions/labelCombo"
+              },
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "$ref": "#/definitions/label"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "org",
+        "repo",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "preparedIssues": {
+      "type": "object",
+      "properties": {
+        "initialStatus": {
+          "default": "",
+          "type": "string",
+          "$ref": "#/definitions/status"
+        },
+        "assignees": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "$ref": "#/definitions/assignee"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "orca": {
+      "type": "object",
+      "properties": {
+        "worktreeHooks": {
+          "type": "object",
+          "properties": {
+            "setup": {
+              "default": "",
+              "type": "string"
+            },
+            "teardown": {
+              "default": "",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "github"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "label": {
+      "type": "string",
+      "enum": [
+        "dry"
+      ]
+    },
+    "labelCombo": {
+      "pattern": "^(?:dry)+(,(?:dry)+)*$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Backlog",
+        "Postponed",
+        "Planned for this week",
+        "Ready for pick-up",
+        "In progress",
+        "Review and test",
+        "Merged",
+        "Done"
+      ]
+    },
+    "assignee": {
+      "type": "string",
+      "enum": [
+        "feritarou",
+        "logennn",
+        "Tueske",
+        "SubmoduleService"
+      ]
+    }
+  }
+}
