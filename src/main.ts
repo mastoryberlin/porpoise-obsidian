@@ -1,5 +1,6 @@
 import { Editor, Plugin } from 'obsidian';
 import { PathAutocompleteSuggest } from './autocomplete/pathSuggest';
+import { pathStylingPlugin } from './editor/pathStyling';
 import {
 	DEFAULT_SETTINGS,
 	MyPluginSettings,
@@ -16,6 +17,9 @@ export default class PorpoisePathAutocompletePlugin extends Plugin {
 
 		// Register the path autocomplete
 		this.registerEditorSuggest(new PathAutocompleteSuggest(this.app));
+		
+		// Register path styling extension for CodeMirror
+		this.registerEditorExtension(pathStylingPlugin);
 		
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
