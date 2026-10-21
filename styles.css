@@ -66,8 +66,26 @@ code, pre {
 }
 
 /* Style @path references in the editor with monospace font */
-/* This is applied by the CodeMirror decoration plugin */
-.porpoise-path-ref {
-	font-family: var(--font-monospace, monospace) !important;
-	font-variant-ligatures: none !important;
+/* This targets the CodeMirror editor content */
+.cm-content {
+	font-family: inherit;
+}
+
+/* Style text that starts with @ followed by a path segment */
+/* Note: This is a broad selector that will style all @ mentions in the editor */
+/* For more precise styling, a CodeMirror decoration plugin would be needed */
+.cm-line span {
+	font-family: inherit;
+}
+
+/* This selector attempts to target path references specifically */
+/* Browsers with :has() support (modern browsers) */
+.cm-line span:has(> span:first-child:contains("@")) {
+	font-family: var(--font-monospace, monospace);
+}
+
+/* Fallback: Add a data attribute via JavaScript for more precise styling */
+span[path-ref="true"] {
+	font-family: var(--font-monospace, monospace);
+	font-variant-ligatures: none;
 }
