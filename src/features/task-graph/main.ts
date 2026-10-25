@@ -435,15 +435,39 @@ export default class TaskGraphPlugin extends Plugin {
         }
     }
 
+
+    async getPrepFolder(): Promise<string> {
+        try {
+            const configFile = this.app.vault.getAbstractFileByPath('porpoise-config.json');
+            if (configFile instanceof TFile) {
+                const content = await this.app.vault.read(configFile);
+                const config = JSON.parse(content);
+                if (config?.folders?.prepFiles) {
+                    return config.folders.prepFiles + '/';
+                }
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+        return 'prep/';
+    }
+
+
     async loadSettings() {
         const loadedData = (await this.loadData()) as Partial<TaskGraphSettings> | null;
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
-        if (!this.settings.boards || this.settings.boards.length === 0) {
-            this.settings.boards = [DEFAULT_BOARD];
+        
+        // Add prep folder filter from porpoise-config.json to boards without folder filters
+        const prepFolder = await this.getPrepFolder();
+        for (const board of this.settings.boards) {
+            if (!board.filters?.folders?.length) {
+                board.filters = { ...board.filters, folders: [prepFolder] };
+            }
         }
         const first = this.settings.boards[0];
+        
         if (first && !this.settings.boards.some(board => !board.archived)) {
-            this.settings.boards = archiveBoard(this.settings.boards, first.id).boards;
+            this.settings.boards = archiveBoard(this.settings.boards, first.id, this.app.vault).boards;
         }
         const active = this.settings.boards.find(board => board.id === this.settings.lastActiveBoardId && !board.archived)
             || this.settings.boards.find(board => !board.archived);

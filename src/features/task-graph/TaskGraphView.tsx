@@ -1068,7 +1068,8 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       boardSwitchTimers.current.push(timer);
   };
 
-  const handleAddBoard = () => { const newBoard: GraphBoard = { id: Date.now().toString(), name: `Board ${plugin.settings.boards.length + 1}`, filters: { tags: [], excludeTags: [], folders: ["prep/"], status: [' ', '/'], tagMode: 'OR' }, data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...plugin.taskCache.keys()] } }; plugin.settings.boards.push(newBoard); handleSwitchBoard(newBoard.id); };
+
+  const handleAddBoard = async () => { const prepFolder = await plugin.getPrepFolder(); const newBoard: GraphBoard = { id: Date.now().toString(), name: `Board ${plugin.settings.boards.length + 1}`, filters: { tags: [], excludeTags: [], folders: [prepFolder], status: [' ', '/'], tagMode: 'OR' }, data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...plugin.taskCache.keys()] } }; plugin.settings.boards.push(newBoard); await plugin.saveSettings(); handleSwitchBoard(newBoard.id); };
 
   const handleArchiveBoard = async (id: string) => {
       const nextId = await plugin.archiveBoard(id);
