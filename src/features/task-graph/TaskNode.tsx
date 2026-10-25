@@ -28,8 +28,8 @@ export const TaskNode = React.memo(({ data, isConnectable, showHandles = true }:
   const [noteDraft, setNoteDraft] = React.useState(data.notes || '');
 
   React.useEffect(() => {
-    if (!isEditingNotes) setNoteDraft(data.notes || '');
-  }, [data.notes, isEditingNotes]);
+    setNoteDraft(data.notes || '');
+  }, [data.notes]);
 
   const saveNotes = async () => {
     if (noteDraft !== data.notes) await data.onSaveNotes(data, noteDraft);

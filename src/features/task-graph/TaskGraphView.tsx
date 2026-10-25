@@ -924,13 +924,19 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   const handleSaveTextNode = async (id: string, text: string) => { const board = plugin.settings.boards.find(b => b.id === activeBoardId); if(board) { const textNodes = board.data.textNodes.map(tn => tn.id === id ? { ...tn, text } : tn); await plugin.saveBoardData(activeBoardId, { textNodes }); } };
 
   const handleSaveTaskNotes = async (taskData: TaskNodeData, notes: string) => {
-      const content = `${taskData.label}${notes.trim() ? `\n${notes}` : ''}`;
-      if (taskData.source === 'tasknotes') {
-          await plugin.updateTaskNotesContent(taskData.path, content);
-      } else {
-          await plugin.updateTaskContent(taskData.path, taskData.line, taskData.endLine, content);
-      }
-      setRefreshKey(prev => prev + 1);
+    if (taskData.source === 'tasknotes') {
+        const content = `${taskData.label}${notes.trim() ? `\n${notes}` : ''}`;
+        await plugin.updateTaskNotesContent(taskData.path, content);
+    } else if (taskData.source === 'h1') {
+        // For H1 tasks, notes are separate from the header
+        // Update lines from line+1 to endLine with the notes
+        await plugin.updateTaskNotesContent(taskData.path, notes, taskData.line, taskData.endLine);
+    } else {
+        // For checklist tasks
+        const content = `${taskData.label}${notes.trim() ? `\n${notes}` : ''}`;
+        await plugin.updateTaskContent(taskData.path, taskData.line, taskData.endLine, content);
+    }
+    setRefreshKey(prev => prev + 1);
   };
 
   const handleEditTask = (taskData: TaskNodeData) => {
@@ -938,10 +944,25 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       setEditTarget({ id: taskData.id, text: initialText, path: taskData.path, line: taskData.line, endLine: taskData.endLine, source: taskData.source });
   };
   const saveTaskEdit = async (text: string) => {
-      if (!editTarget) return;
-      if (editTarget.source === 'tasknotes') await plugin.updateTaskNotesContent(editTarget.path, text);
-      else await plugin.updateTaskContent(editTarget.path, editTarget.line, editTarget.endLine, text);
-      setEditTarget(null);
+    if (!editTarget) return;
+    const target = editTarget;
+    if (target.source === 'tasknotes') {
+        await plugin.updateTaskNotesContent(target.path, text);
+    } else if (target.source === 'h1') {
+        // For H1 tasks, the text includes the header and notes
+        // Split into header (first line) and notes (rest)
+        const [headerLine, ...restLines] = text.split('\n')!;
+        const notes = restLines.join('\n');
+
+        // Update header line
+        await plugin.updateTaskContent(target.path, target.line, target.endLine, headerLine!);
+
+        // Update notes section (lines after header)
+        await plugin.updateTaskNotesContent(target.path, notes, target.line, target.endLine);
+    } else {
+        await plugin.updateTaskContent(target.path, target.line, target.endLine, text);
+    }
+    setEditTarget(null);
   };
 
   const onPaneContextMenu = React.useCallback((event: React.MouseEvent) => {

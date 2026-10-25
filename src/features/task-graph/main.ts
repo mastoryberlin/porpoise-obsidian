@@ -518,6 +518,15 @@ export default class TaskGraphPlugin extends Plugin {
         const content = await this.app.vault.read(file);
         const lines = content.split('\n');
         if (startLine >= lines.length) return;
+        
+        // For H1 tasks, if we're updating the header line, ensure it has the # prefix
+        if (lines[startLine]?.trim().startsWith('#')) {
+            // Ensure newText is a valid H1 header
+            if (!newText.trim().startsWith('#')) {
+                newText = `# ${newText.trim()}`;
+            }
+        }
+        
         lines[startLine] = newText;
         await this.app.vault.modify(file, lines.join('\n'));
         void this.updateFileCache(file);
@@ -564,9 +573,33 @@ export default class TaskGraphPlugin extends Plugin {
         void this.updateFileCache(file);
     }
 
-    async updateTaskNotesContent(path: string, text: string): Promise<void> {
-        // For H1 headers, update the header text
-        await this.updateTaskContent(path, 0, 0, text);
+    async updateTaskNotesContent(path: string, text: string, startLine?: number, endLine?: number): Promise<void> {
+        // For H1 headers, notes are the lines between the header and the next section
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (!(file instanceof TFile)) return;
+        
+        const content = await this.app.vault.read(file);
+        const lines = content.split('\n');
+        
+        // If line info is provided, update that specific section
+        if (startLine !== undefined && endLine !== undefined) {
+            // Replace lines from startLine+1 to endLine with the new notes
+            const notesLines = text.split('\n');
+            
+            // Build new content
+            const newLines = [
+                ...lines.slice(0, startLine + 1),
+                ...notesLines,
+                ...lines.slice(endLine + 1)
+            ];
+            
+            await this.app.vault.modify(file, newLines.join('\n'));
+            await this.updateFileCache(file);
+            return;
+        }
+        
+        // Fallback: append notes to end of file (shouldn't happen with proper callers)
+        await this.appendTaskToFile(path, text);
     }
 
     async appendTaskToFile(filePath: string, content: string): Promise<string> {
