@@ -184,6 +184,8 @@ export default class TaskGraphPlugin extends Plugin {
         return `${this.manifest.dir || `${this.app.vault.configDir}/plugins/${this.manifest.id}`}/task-cache.json`;
     }
 
+    private ribbonIconElement: HTMLElement | null = null;
+
     private scheduleSnapshot(): void {
         this.snapshotDirty = true;
         if (!this.snapshotLoaded || this.snapshotTimer !== undefined) return;
@@ -208,7 +210,7 @@ export default class TaskGraphPlugin extends Plugin {
 
         this.addSettingTab(new TaskGraphSettingTab(this.app, this));
         this.registerView(VIEW_TYPE_TASK_GRAPH, (leaf) => new TaskGraphView(leaf, this));
-        this.addRibbonIcon('network', 'Open task graph', () => { void this.activateView(); });
+        this.ribbonIconElement = this.addRibbonIcon('network', 'Open task graph', () => { void this.activateView(); });
 
         // Commands with porpoise: prefix
         this.addCommand({
@@ -416,11 +418,21 @@ export default class TaskGraphPlugin extends Plugin {
         if (changed) this.persistTaskPathIndexes();
     }
 
-    foronload() {
+    onunload() {
         this.cacheRun++;
         if (this.snapshotTimer !== undefined) window.clearTimeout(this.snapshotTimer);
         if (this.snapshotLoaded && this.snapshotDirty) {
             void this.snapshotWriter.request().catch(error => console.error('Task graph cache write failed', error));
+        }
+        // Close all task graph views
+        const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TASK_GRAPH);
+        for (const leaf of leaves) {
+            leaf.detach();
+        }
+        // Remove ribbon icon
+        if (this.ribbonIconElement) {
+            this.ribbonIconElement.remove();
+            this.ribbonIconElement = null;
         }
     }
 
