@@ -1,28 +1,13 @@
 import type { GraphBoard } from './main';
-import { TFile } from 'obsidian';
 
-function getPrepFolderSync(vault: any): string {
-    try {
-        const configFile = vault.getAbstractFileByPath('porpoise-config.json');
-        if (configFile instanceof TFile) {
-            // We can't read sync, so just use fallback
-            return 'prep/';
-        }
-    } catch (e) {
-        // Ignore errors
-    }
-    return 'prep/';
-}
-
-export function archiveBoard(boards: GraphBoard[], id: string, vault?: any) {
+export function archiveBoard(boards: GraphBoard[], id: string) {
     if (!boards.some(board => board.id === id)) throw new Error('Board not found');
     const nextBoards = boards.map(board => board.id === id ? { ...board, archived: true } : board);
     let nextBoard = nextBoards.find(board => !board.archived);
     if (!nextBoard) {
-        const prepFolder = vault ? getPrepFolderSync(vault) : 'prep/';
         nextBoard = {
             id: `board-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: 'Main board',
-            filters: { tags: [], excludeTags: [], folders: [prepFolder], status: [' ', '/'], tagMode: 'OR' },
+            filters: { tags: [], excludeTags: [], folders: ['prep/'], status: [' ', '/'], tagMode: 'OR' },
             data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...new Set(boards.flatMap(board => board.data.taskPaths || []))] }
         };
         nextBoards.push(nextBoard);

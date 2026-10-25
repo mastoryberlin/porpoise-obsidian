@@ -683,7 +683,17 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
           setShowTaskSearch(true);
       } else {
           const path = groupWorkspace.sourcePath(source.id);
-          if (path) setCreateTarget({ sourceNodeId: source.id, sourcePath: path });
+          if (path) {
+              setCreateTarget({ sourceNodeId: source.id, sourcePath: path });
+          } else {
+              // Create new task in prep file for new tasks
+              void plugin.createNewTaskInPrepFile().then(newTaskId => {
+                  if (newTaskId) {
+                      void connectGraphObjects(plugin, activeBoardId, source.id, newTaskId, nodes);
+                      setRefreshKey(prev => prev + 1);
+                  }
+              });
+          }
       }
   }, [nodes]);
 
@@ -1395,7 +1405,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
           }} />}
       {connectionChoices && !connectionActionsHidden && <ConnectionActions x={connectionChoices.x} y={connectionChoices.y}
           activeAction={isConnecting ? connectionActiveAction : null}
-          canCreate={!!groupWorkspace.sourcePath(connectionChoices.sourceId)}
+          canCreate={true}
           onChoose={chooseConnectionAction} />}
       <ReactFlow
         nodes={nodes} edges={edges}

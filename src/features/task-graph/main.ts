@@ -452,6 +452,35 @@ export default class TaskGraphPlugin extends Plugin {
         return 'prep/';
     }
 
+    async getNewTasksFilePath(): Promise<string> {
+        const prepFolder = await this.getPrepFolder();
+        let fileName = '_new';
+        try {
+            const configFile = this.app.vault.getAbstractFileByPath('porpoise-config.json');
+            if (configFile instanceof TFile) {
+                const content = await this.app.vault.read(configFile);
+                const config = JSON.parse(content);
+                if (config?.obsidian?.taskGraph?.prepFileForNewTasks) {
+                    fileName = config.obsidian.taskGraph.prepFileForNewTasks;
+                }
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+        // Ensure .md extension
+        if (!fileName.endsWith('.md')) {
+            fileName += '.md';
+        }
+        return prepFolder + fileName;
+    }
+
+    async createNewTaskInPrepFile(text: string = 'New Task'): Promise<string> {
+        const filePath = await this.getNewTasksFilePath();
+        const header = `# ${text}`;
+        return this.appendTaskToFile(filePath, header);
+    }
+
+
 
     async loadSettings() {
         const loadedData = (await this.loadData()) as Partial<TaskGraphSettings> | null;
@@ -467,7 +496,7 @@ export default class TaskGraphPlugin extends Plugin {
         const first = this.settings.boards[0];
         
         if (first && !this.settings.boards.some(board => !board.archived)) {
-            this.settings.boards = archiveBoard(this.settings.boards, first.id, this.app.vault).boards;
+            this.settings.boards = archiveBoard(this.settings.boards, first.id).boards;
         }
         const active = this.settings.boards.find(board => board.id === this.settings.lastActiveBoardId && !board.archived)
             || this.settings.boards.find(board => !board.archived);
