@@ -12,7 +12,7 @@
       "newSession": "vibe --trust --agent mastory-glm {prompt}"
     },
     "worktreeHooks": {
-      "setup": "npm i"
+      "setup": "npm i && git submodule update"
     }
   },
   "preparedIssues": {
