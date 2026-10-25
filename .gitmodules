@@ -1,0 +1,3 @@
+[submodule "spatial-task-graph"]
+	path = spatial-task-graph
+	url = git@github.com:CccJhuan/spatial-task-graph
