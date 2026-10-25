@@ -506,7 +506,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   const boardSwitchTimers = React.useRef<number[]>([]);
   React.useEffect(() => () => boardSwitchTimers.current.forEach(timer => window.clearTimeout(timer)), []);
 
-  const [editTarget, setEditTarget] = React.useState<{id: string, text: string, path: string, line: number, endLine: number, source: 'checklist' | 'tasknotes'} | null>(null);
+  const [editTarget, setEditTarget] = React.useState<{id: string, text: string, path: string, line: number, endLine: number, source: 'checklist' | 'tasknotes' | 'h1'} | null>(null);
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const [connectionChoices, setConnectionChoices] = React.useState<{ sourceId: string; x: number; y: number } | null>(null);
   const connectionChoicesRef = React.useRef<typeof connectionChoices>(null);
@@ -777,7 +777,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       } else { connectionChoicesRef.current = null; setConnectionChoices(null); }
   }, [nodes, view, chooseConnectionAction, placeConnectionChoices]);
 
-  const handleToggleTask = async (id: string, currentStatus: string, path: string, line: number, source: 'checklist' | 'tasknotes') => {
+  const handleToggleTask = async (id: string, currentStatus: string, path: string, line: number, source: 'checklist' | 'tasknotes' | 'h1' | 'h1') => {
       const newStatus = (currentStatus === ' ' || currentStatus === '/') ? 'x' : ' ';
       const newCustomStatus = newStatus === 'x' ? 'finished' : 'backlog';
 

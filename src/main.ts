@@ -1,9 +1,9 @@
-import { Plugin } from 'obsidian';
+import { Editor, Plugin } from 'obsidian';
 import { PathAutocompleteSuggest } from './autocomplete/pathSuggest';
 import {
-	DEFAULT_SETTINGS as DEFAULT_PATH_SETTINGS,
-	MyPluginSettings as PathSettings,
-	SampleSettingTab as PathSettingTab,
+	DEFAULT_PATH_SETTINGS,
+	PathSettings,
+	PathSettingTab,
 } from './settings';
 import TaskGraphPlugin from './features/task-graph/main';
 
@@ -19,17 +19,17 @@ export const DEFAULT_SETTINGS: PorpoiseSettings = {
 // Main plugin class
 export default class PorpoisePlugin extends Plugin {
 	settings!: PorpoiseSettings;
-	taskGraphPlugin?: TaskGraphPlugin;
+	taskGraphPlugin!: TaskGraphPlugin;
 
 	async onload() {
 		await this.loadSettings();
 
 		// Load path autocomplete
-		this.registerEditorSuggest(new PathAutocompleteSuggest(this.app));
+		const suggest = new PathAutocompleteSuggest(this.app);
+		this.registerEditorSuggest(suggest);
 
 		// Load task graph feature
-		this.taskGraphPlugin = new TaskGraphPlugin(this.app);
-		this.taskGraphPlugin.manifest = this.manifest;
+		this.taskGraphPlugin = new TaskGraphPlugin(this.app, this.manifest);
 		await this.taskGraphPlugin.onload();
 
 		// Settings tab
@@ -37,9 +37,7 @@ export default class PorpoisePlugin extends Plugin {
 	}
 
 	onunload() {
-		if (this.taskGraphPlugin) {
-			this.taskGraphPlugin.onunload();
-		}
+		this.taskGraphPlugin.onunload();
 	}
 
 	async loadSettings() {

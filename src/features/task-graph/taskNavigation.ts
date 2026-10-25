@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import type { App } from 'obsidian';
 
-interface TaskLocation { id: string; path: string; line: number; source: 'checklist' | 'tasknotes'; }
+interface TaskLocation { id: string; path: string; line: number; source: 'checklist' | 'tasknotes' | 'h1'; }
 
 export async function openTaskLocation(app: App, task: TaskLocation): Promise<void> {
     const blockId = task.source === 'checklist' ? task.id.match(/::\^([^:]+)$/)?.[1] : undefined;

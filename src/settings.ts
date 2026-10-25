@@ -1,18 +1,18 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import PorpoisePathAutocompletePlugin from './main';
+import PorpoisePlugin from './main';
 
-export interface MyPluginSettings {
+export interface PathSettings {
 	mySetting: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_PATH_SETTINGS: PathSettings = {
 	mySetting: 'default',
 };
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: PorpoisePathAutocompletePlugin;
+export class PathSettingTab extends PluginSettingTab {
+	plugin: PorpoisePlugin;
 
-	constructor(app: App, plugin: PorpoisePathAutocompletePlugin) {
+	constructor(app: App, plugin: PorpoisePlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -23,14 +23,14 @@ export class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings')
+			.setName('Path Autocomplete Settings')
 			.setDesc("Path autocomplete settings")
 			.addText((text) =>
 				text
 					.setPlaceholder('Enter your secret')
-					.setValue(this.plugin.settings.mySetting)
+					.setValue(this.plugin.settings.pathSettings.mySetting)
 					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
+						this.plugin.settings.pathSettings.mySetting = value;
 						await this.plugin.saveSettings();
 					}),
 			);
