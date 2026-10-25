@@ -609,7 +609,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
             id: t.id, type: 'task', position: { x: posX, y: posY },
             data: {
                 id: t.id, label: t.text, notes: t.notes, status: t.status, file: t.file, path: t.path, line: t.line, endLine: t.endLine,
-                customStatus: t.source === 'tasknotes' ? t.statusCategory : finalCustomStatus,
+                customStatus: (t.source === 'tasknotes' || t.source === 'h1') ? t.statusCategory : finalCustomStatus,
                 source: t.source, rawStatus: t.rawStatus,
                 hasChildren: (childrenById[t.id] || []).length > 0,
                 isCollapsed: false,

@@ -209,7 +209,6 @@ export default class TaskGraphPlugin extends Plugin {
         await this.loadSnapshot();
 
         this.addSettingTab(new TaskGraphSettingTab(this.app, this));
-        this.registerView(VIEW_TYPE_TASK_GRAPH, (leaf) => new TaskGraphView(leaf, this));
         this.ribbonIconElement = this.addRibbonIcon('network', 'Open task graph', () => { void this.activateView(); });
 
         // Commands with porpoise: prefix

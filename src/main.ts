@@ -6,6 +6,7 @@ import {
 	PathSettingTab,
 } from './settings';
 import TaskGraphPlugin from './features/task-graph/main';
+import { TaskGraphView, VIEW_TYPE_TASK_GRAPH } from './features/task-graph/TaskGraphView';
 
 // Combined settings
 export interface PorpoiseSettings {
@@ -30,6 +31,7 @@ export default class PorpoisePlugin extends Plugin {
 
 		// Load task graph feature
 		this.taskGraphPlugin = new TaskGraphPlugin(this.app, this.manifest);
+		this.registerView(VIEW_TYPE_TASK_GRAPH, (leaf) => new TaskGraphView(leaf, this.taskGraphPlugin));
 		await this.taskGraphPlugin.onload();
 
 		// Settings tab

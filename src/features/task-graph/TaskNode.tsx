@@ -20,7 +20,7 @@ export const STATUS_COLORS = { 'in_progress': '#34c759', 'pending': '#ff9500', '
 const extractTags = (text: string) => { if (!text) return { tags: [], cleanText: '' }; const tagRegex = /#[\w\u4e00-\u9fa5-]+(\/[\w\u4e00-\u9fa5-]+)*/g; const tags = text.match(tagRegex) || []; const cleanText = text.replace(tagRegex, '').trim(); return { tags, cleanText }; };
 
 export const TaskNode = React.memo(({ data, isConnectable, showHandles = true }: { data: TaskNodeData, isConnectable: boolean, showHandles?: boolean }) => {
-  const { tags, cleanText } = extractTags(data.label);
+  const { tags, cleanText } = data.source === 'h1' ? { tags: [], cleanText: data.label } : extractTags(data.label);
   const statusColor = STATUS_COLORS[data.customStatus as keyof typeof STATUS_COLORS] || STATUS_COLORS['default'];
 
   const [isExpanded, setIsExpanded] = React.useState(false);
