@@ -1,9 +1,9 @@
 {
-	"id": "porpoise-path-autocomplete",
-	"name": "Porpoise Path Autocomplete",
+	"id": "porpoise",
+	"name": "Porpoise",
 	"version": "1.0.0",
-	"minAppVersion": "1.0.0",
-	"description": "Autocomplete @ path references with filesystem navigation",
+	"minAppVersion": "1.10.0",
+	"description": "Path autocomplete and H1-header based task graph visualization for Obsidian",
 	"author": "Felix",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }
