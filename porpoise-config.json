@@ -8,6 +8,9 @@
     }
   },
   "orca": {
+    "agentCommands":{
+      "newSession": "vibe --trust --agent mastory-glm {prompt}"
+    },
     "worktreeHooks": {
       "setup": "npm i"
     }

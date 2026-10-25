@@ -113,6 +113,18 @@
     "orca": {
       "type": "object",
       "properties": {
+        "agentCommands": {
+          "type": "object",
+          "properties": {
+            "newSession": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "newSession"
+          ],
+          "additionalProperties": false
+        },
         "worktreeHooks": {
           "type": "object",
           "properties": {
@@ -128,11 +140,15 @@
           "additionalProperties": false
         }
       },
+      "required": [
+        "agentCommands"
+      ],
       "additionalProperties": false
     }
   },
   "required": [
-    "github"
+    "github",
+    "orca"
   ],
   "additionalProperties": false,
   "definitions": {
