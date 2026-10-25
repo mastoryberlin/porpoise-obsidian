@@ -7,7 +7,7 @@ export function archiveBoard(boards: GraphBoard[], id: string) {
     if (!nextBoard) {
         nextBoard = {
             id: `board-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: 'Main board',
-            filters: { tags: [], excludeTags: [], folders: [], status: [' ', '/'], tagMode: 'OR' },
+            filters: { tags: [], excludeTags: [], folders: ["prep/"], status: [' ', '/'], tagMode: 'OR' },
             data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...new Set(boards.flatMap(board => board.data.taskPaths || []))] }
         };
         nextBoards.push(nextBoard);

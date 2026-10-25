@@ -69,7 +69,7 @@ interface TaskGraphSettings {
 const DEFAULT_BOARD: GraphBoard = {
     id: 'default',
     name: 'Main board',
-    filters: { tags: [], excludeTags: [], folders: [], status: [' ', '/'], tagMode: 'OR' },
+    filters: { tags: [], excludeTags: [], folders: ["prep/"], status: [' ', '/'], tagMode: 'OR' },
     data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [] },
 };
 
