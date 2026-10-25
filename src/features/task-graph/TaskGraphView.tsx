@@ -21,7 +21,7 @@ import ReactFlow, {
 
 import TaskGraphPlugin, { GraphBoard } from './main';
 import { synchronizeHierarchy } from './taskHierarchy';
-import { FilterCondition, getFilterConditions, filterSuggestions } from './taskFilters';
+import { FilterCondition, getFilterConditions, filterSuggestions, matchesFilterConditions } from './taskFilters';
 import { isSimplifiedChinese } from './language';
 import { PanelDropdown } from './PanelDropdown';
 import { TaskSearch } from './TaskSearch';
@@ -199,7 +199,7 @@ const TaskSidebar = React.memo(({ nodes, onNodeCenter, onStatusChange, onSearch 
             <div className="sidebar-title" style={{ color: color }}><div style={{ width: 6, height: 6, borderRadius: '50%', background: color }}></div>{title} <span style={{ opacity: 0.5 }}>({items.length})</span></div>
             <div className="sidebar-list" style={{ height: items.length ? Math.min(items.length, maxRows) * (rowHeight + rowGap) - rowGap : 16 }}>
                 {items.map(node => (
-                    <div key={node.id} className={`sidebar-item item-${className} ${node.type === 'groupFrame' ? 'sidebar-group-item' : ''}`} onClick={() => onNodeCenter(node.id)} draggable onDragStart={(e) => handleDragStart(e, node.id)}>{node.type === 'groupFrame' ? `▣ ${node.data.label}` : node.data.label.replace(/#\S+/g, '').trim()}</div>
+                    <div key={node.id} className={`sidebar-item item-${className} ${node.type === 'groupFrame' ? 'sidebar-group-item' : ''}`} onClick={() => onNodeCenter(node.id)} draggable onDragStart={(e) => handleDragStart(e, node.id)}>{node.type === 'groupFrame' ? `▣ ${node.data.label}` : (isTaskNode(node) && node.data.source === 'h1' ? node.data.label : node.data.label.replace(/#\S+/g, '').trim())}</div>
                 ))}
                 {items.length === 0 && <div style={{ fontSize: '11px', color: 'var(--text-faint)', paddingLeft: '10px' }}>Empty - Drop here</div>}
             </div>
@@ -585,8 +585,9 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       }
       setAllFolders(Array.from(folderSet).sort());
 
-      const tasks = plugin.getTasks(activeBoardId);
+      const allTasks = plugin.getTasks(activeBoardId);
       const boardConfig = plugin.settings.boards.find(b => b.id === activeBoardId);
+      const tasks = boardConfig && boardConfig.filters ? allTasks.filter(t => matchesFilterConditions(t.text, t.path, getFilterConditions(boardConfig.filters))) : allTasks;
       const savedLayout = boardConfig?.data.layout || {};
       const savedEdges = boardConfig?.data.edges || [];
       const savedNodeStatus = boardConfig?.data.nodeStatus || {};
@@ -1067,7 +1068,9 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   const handleSyncRelations = async (notify = false) => {
       const board = plugin.settings.boards.find(b => b.id === activeBoardId);
       if (!board) return;
-      const { edges: nextEdges, added, removed } = synchronizeHierarchy(plugin.getTasks(activeBoardId), board.data.edges || edges);
+      const allTasks = plugin.getTasks(activeBoardId);
+      const filteredTasks = board && board.filters ? allTasks.filter(t => matchesFilterConditions(t.text, t.path, getFilterConditions(board.filters))) : allTasks;
+      const { edges: nextEdges, added, removed } = synchronizeHierarchy(filteredTasks, board.data.edges || edges);
       if (added === 0 && removed === 0) {
           if (notify) new Notice('Document relations are already synchronized.');
           return;
