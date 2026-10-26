@@ -437,19 +437,21 @@ export default class TaskGraphPlugin extends Plugin {
 
 
     async getPrepFolder(): Promise<string> {
+        let folder = 'prep'
         try {
             const configFile = this.app.vault.getAbstractFileByPath('porpoise-config.json');
             if (configFile instanceof TFile) {
                 const content = await this.app.vault.read(configFile);
-                const config = JSON.parse(content);
+                const config = JSON.parse(content) as {folders?: {prepFiles?: string}};
                 if (config?.folders?.prepFiles) {
-                    return config.folders.prepFiles + '/';
+                    folder = config.folders.prepFiles;
                 }
             }
-        } catch (e) {
+        } catch (_) {
             // Ignore errors
         }
-        return 'prep/';
+        if (!folder.endsWith('/')) folder += '/'
+        return folder;
     }
 
     async getNewTasksFilePath(): Promise<string> {
@@ -459,19 +461,17 @@ export default class TaskGraphPlugin extends Plugin {
             const configFile = this.app.vault.getAbstractFileByPath('porpoise-config.json');
             if (configFile instanceof TFile) {
                 const content = await this.app.vault.read(configFile);
-                const config = JSON.parse(content);
+                const config = JSON.parse(content) as {obsidian?: {taskGraph?: {prepFileForNewTasks?: string}}};
                 if (config?.obsidian?.taskGraph?.prepFileForNewTasks) {
                     fileName = config.obsidian.taskGraph.prepFileForNewTasks;
                 }
             }
-        } catch (e) {
+        } catch (_) {
             // Ignore errors
         }
-        // Ensure .md extension
-        if (!fileName.endsWith('.md')) {
-            fileName += '.md';
-        }
-        return prepFolder + fileName;
+        if (!fileName.endsWith('.md')) fileName += '.md'
+        const path = prepFolder + fileName
+        return path;
     }
 
     async createNewTaskInPrepFile(text: string = 'New Task'): Promise<string> {

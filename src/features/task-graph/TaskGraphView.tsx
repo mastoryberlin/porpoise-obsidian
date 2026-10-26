@@ -901,7 +901,8 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
 
   const handleCreateTask = async (text: string) => {
       if (!createTarget) return;
-      const newId = await plugin.appendTaskToFile(await plugin.getNewTasksFilePath(), `# ${text}`);
+      const newTaskFilePath = await plugin.getNewTasksFilePath()
+      const newId = await plugin.appendTaskToFile(newTaskFilePath, `# ${text}`);
       if (newId) {
           const parentNode = nodes.find(n => n.id === createTarget.sourceNodeId);
           let newX = 0, newY = 0; if (parentNode) { newX = parentNode.position.x + (parentNode.type === 'groupFrame' ? (parentNode.width || 300) + 80 : 400); newY = parentNode.position.y; }
