@@ -513,7 +513,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   const [connectionActionsHidden, setConnectionActionsHidden] = React.useState(false);
   const [connectionActiveAction, setConnectionActiveAction] = React.useState<'search' | 'cancel' | 'create' | null>(null);
   const [searchConnectionSource, setSearchConnectionSource] = React.useState<string | null>(null);
-  const [createTarget, setCreateTarget] = React.useState<{ sourceNodeId: string, sourcePath: string } | null>(null);
+  const [createTarget, setCreateTarget] = React.useState<{ sourceNodeId: string, handleType: 'source' | 'target' } | null>(null);
 
   const [allTags, setAllTags] = React.useState<string[]>([]);
   const [allFolders, setAllFolders] = React.useState<string[]>([]);
@@ -554,6 +554,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   );
   const connectionStartRef = React.useRef<Partial<OnConnectStartParams>>({});
   const connectionMadeRef = React.useRef(false);
+  const handleTypeRef = React.useRef<'source' | 'target'>('source');
 
   const activeBoard = plugin.settings.boards.find(b => b.id === activeBoardId && !b.archived) || plugin.settings.boards.find(b => !b.archived);
   const groupWorkspace = useGroupWorkspace(plugin, activeBoardId, view, nodes, setNodes, () => setRefreshKey(key => key + 1));
@@ -684,7 +685,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       } else {
           const path = groupWorkspace.sourcePath(source.id);
           if (path) {
-              setCreateTarget({ sourceNodeId: source.id, sourcePath: path });
+              setCreateTarget({ sourceNodeId: source.id, handleType: handleTypeRef.current || 'source' });
           } else {
               // Create new task in prep file for new tasks
               void plugin.createNewTaskInPrepFile().then(async (newTaskPath) => {
@@ -709,7 +710,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   }, [nodes]);
 
   React.useEffect(() => {
-      if (!isConnecting || connectionStartRef.current.handleType !== 'source') return;
+      if (!isConnecting || (connectionStartRef.current.handleType !== 'source' && connectionStartRef.current.handleType !== 'target')) return;
       const sourceId = connectionStartRef.current.nodeId;
       if (!sourceId || !nodes.some(node => node.id === sourceId && (isTaskNode(node) || node.type === 'groupFrame'))) return;
       const doc = view.containerEl.ownerDocument;
@@ -761,6 +762,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       setConnectionChoices(null);
       setConnectionActiveAction(null);
       connectionStartRef.current = params;
+      handleTypeRef.current = params.handleType || 'source';
       setConnectionActionsHidden(false);
       connectionMadeRef.current = false;
       setIsConnecting(true);
@@ -770,7 +772,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       setIsConnecting(false);
       if (connectionMadeRef.current) { connectionChoicesRef.current = null; setConnectionChoices(null); return; }
       const point = 'changedTouches' in event ? event.changedTouches[0] : event;
-      if (!point || connectionStartRef.current.handleType !== 'source') return;
+      if (!point || (connectionStartRef.current.handleType !== 'source' && connectionStartRef.current.handleType !== 'target')) return;
       const target = view.containerEl.ownerDocument.elementFromPoint(point.clientX, point.clientY);
       const action = target?.closest('[data-connection-action]')?.getAttribute('data-connection-action');
       if (action === 'cancel') {
@@ -902,7 +904,11 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   const handleCreateTask = async (text: string) => {
       if (!createTarget) return;
       const newTaskFilePath = await plugin.getNewTasksFilePath()
-      const newId = await plugin.appendTaskToFile(newTaskFilePath, `# ${text}`);
+      await plugin.appendTaskToFile(newTaskFilePath, `# ${text}`);
+      // Generate the task ID that will be created by parseH1Tasks
+      const cleanHeaderText = text.replace(/!$/, '').trim();
+      const textHash = cleanHeaderText.substring(0, 50).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+      const newId = `${newTaskFilePath}::#${textHash}`;
       if (newId) {
           const parentNode = nodes.find(n => n.id === createTarget.sourceNodeId);
           let newX = 0, newY = 0; if (parentNode) { newX = parentNode.position.x + (parentNode.type === 'groupFrame' ? (parentNode.width || 300) + 80 : 400); newY = parentNode.position.y; }
@@ -912,7 +918,10 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
               if (groupWorkspace.scope) board.data.groups = (board.data.groups || []).map(group => group.id === groupWorkspace.scope ? { ...group, members: [...group.members, newId] } : group);
               await plugin.saveSettings();
           }
-          await connectGraphObjects(plugin, activeBoardId, createTarget.sourceNodeId, newId, nodes);
+          // Reverse connection if dragging from target (left edge)
+          const sourceId = createTarget.handleType === 'target' ? newId : createTarget.sourceNodeId;
+          const targetId = createTarget.handleType === 'target' ? createTarget.sourceNodeId : newId;
+          await connectGraphObjects(plugin, activeBoardId, sourceId, targetId, nodes);
           setCreateTarget(null); setRefreshKey(prev => prev + 1);
       }
   };
