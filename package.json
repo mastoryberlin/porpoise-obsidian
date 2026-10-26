@@ -1,6 +1,6 @@
 {
 	"name": "porpoise",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Path autocomplete and H1-header based task graph visualization for Obsidian",
 	"main": "main.js",
 	"type": "module",
