@@ -1,9 +1,10 @@
 {
 	"id": "porpoise",
 	"name": "Porpoise",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"minAppVersion": "1.10.0",
 	"description": "Path autocomplete and H1-header based task graph visualization for Obsidian",
 	"author": "Felix",
+	"authorUrl": "https://github.com/feritarou",
 	"isDesktopOnly": true
 }
