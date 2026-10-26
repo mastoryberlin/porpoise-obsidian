@@ -60,7 +60,7 @@ export class TaskGraphSettingTab extends PluginSettingTab {
         // Archived boards section
         containerEl.createEl('hr');
         const archiveSection = containerEl.createDiv();
-        archiveSection.createEl('h3', { text: zh ? '已归档画板' : 'Archived boards' });
+        new Setting(archiveSection).setName("").setHeading();
         this.renderArchivedBoards(archiveSection);
     }
 
@@ -77,16 +77,16 @@ export class TaskGraphSettingTab extends PluginSettingTab {
         const list = containerEl.createEl('ul');
         for (const board of archivedBoards) {
             const item = list.createEl('li');
-            item.createEl('span', { text: board.name });
+            item.createSpan({ text: board.name });
             
             const restoreBtn = item.createEl('button', { text: zh ? '恢复' : 'Restore' });
-            restoreBtn.addEventListener('click', async () => {
-                await this.plugin.restoreBoard(board.id);
+            restoreBtn.addEventListener('click', () => {
+                void this.plugin.restoreBoard(board.id);
             });
             
             const deleteBtn = item.createEl('button', { text: zh ? '删除' : 'Delete' });
-            deleteBtn.addEventListener('click', async () => {
-                await this.plugin.deleteArchivedBoard(board.id);
+            deleteBtn.addEventListener('click', () => {
+                void this.plugin.deleteArchivedBoard(board.id);
             });
         }
     }

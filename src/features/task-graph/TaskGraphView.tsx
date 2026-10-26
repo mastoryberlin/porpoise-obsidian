@@ -801,7 +801,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       } else { connectionChoicesRef.current = null; setConnectionChoices(null); }
   }, [nodes, view, chooseConnectionAction, placeConnectionChoices]);
 
-  const handleToggleTask = async (id: string, currentStatus: string, path: string, line: number, source: 'checklist' | 'tasknotes' | 'h1' | 'h1') => {
+  const handleToggleTask = async (id: string, currentStatus: string, path: string, line: number, source: 'checklist' | 'tasknotes' | 'h1'  ) => {
       const newStatus = (currentStatus === ' ' || currentStatus === '/') ? 'x' : ' ';
       const newCustomStatus = newStatus === 'x' ? 'finished' : 'backlog';
 
@@ -982,7 +982,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
     } else if (target.source === 'h1') {
         // For H1 tasks, the text includes the header and notes
         // Split into header (first line) and notes (rest)
-        const [headerLine, ...restLines] = text.split('\n')!;
+        const [headerLine, ...restLines] = text.split('\n');
         const notes = restLines.join('\n');
 
         // Update header line
@@ -1026,10 +1026,10 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
               ] as const;
               for (const [status, label, color] of groupStatuses) {
                   menu.addItem(item => {
-                      const title = (event.currentTarget as HTMLElement).createEl('span', { cls: 'task-status-menu-label' });
+                      const title = event.currentTarget.createSpan({ cls: 'task-status-menu-label' });
                       title.detach();
                       const row = title;
-                      const marker = row.createEl('span', { cls: 'task-status-menu-marker' });
+                      const marker = row.createSpan({ cls: 'task-status-menu-marker' });
                       marker.setCssProps({ '--task-status-color': color });
                       marker.setAttribute('aria-hidden', 'true');
                       row.appendText(`Group · ${label}`);
@@ -1055,10 +1055,10 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
               ['blocked', 'Blocked'], ['finished', 'Finished']
           ] as const;
           for (const [status, label] of statuses) {
-              const title = (event.currentTarget as HTMLElement).createEl('span', { cls: 'task-status-menu-label' });
+              const title = event.currentTarget.createSpan({ cls: 'task-status-menu-label' });
               title.detach();
               const row = title;
-              const marker = row.createEl('span', { cls: 'task-status-menu-marker' });
+              const marker = row.createSpan({ cls: 'task-status-menu-marker' });
               marker.setCssProps({ '--task-status-color': STATUS_COLORS[status] });
               marker.setAttribute('aria-hidden', 'true');
               row.append(marker);
@@ -1100,7 +1100,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   };
 
 
-  const handleAddBoard = async () => { const prepFolder = await plugin.getPrepFolder(); const newBoard: GraphBoard = { id: Date.now().toString(), name: `Board ${plugin.settings.boards.length + 1}`, filters: { tags: [], excludeTags: [], folders: [prepFolder], status: [' ', '/'], tagMode: 'OR' }, data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...plugin.taskCache.keys()] } }; plugin.settings.boards.push(newBoard); await plugin.saveSettings(); handleSwitchBoard(newBoard.id); };
+  const handleAddBoard = () => {void ( async () => { const prepFolder = await plugin.getPrepFolder(); const newBoard: GraphBoard = { id: Date.now().toString(), name: `Board ${plugin.settings.boards.length + 1}`, filters: { tags: [], excludeTags: [], folders: [prepFolder], status: [' ', '/'], tagMode: 'OR' }, data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...plugin.taskCache.keys()] } }; plugin.settings.boards.push(newBoard); await plugin.saveSettings(); handleSwitchBoard(newBoard.id); })()};
 
   const handleArchiveBoard = async (id: string) => {
       const nextId = await plugin.archiveBoard(id);

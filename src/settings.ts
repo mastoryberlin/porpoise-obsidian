@@ -23,7 +23,7 @@ export class PathSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Path Autocomplete Settings')
+			.setName('Path autocomplete settings')
 			.setDesc("Path autocomplete settings")
 			.addText((text) =>
 				text

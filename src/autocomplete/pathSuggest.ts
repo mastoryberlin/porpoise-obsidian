@@ -67,7 +67,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 								line: cursor.line,
 								ch: replaceStartCh + whitespaceBefore.length + 1 + newPath.length,
 							};
-							setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+							window.setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 						} else {
 							// No / in path - remove everything but @
 							editor.replaceRange(
@@ -81,7 +81,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 								line: cursor.line,
 								ch: replaceStartCh + whitespaceBefore.length + 1,
 							};
-							setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+							window.setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 						}
 					}
 				}
@@ -154,7 +154,6 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		const atMatch = lineBeforeCursor.match(/(\s|^)@([^\s]*)$/);
 		if (!atMatch) return null;
 
-		const whitespaceBefore = atMatch[1] || '';
 		const afterAt = atMatch[2] || '';
 		const atIndex = lineBeforeCursor.length - (afterAt.length + 1);
 		
@@ -175,8 +174,8 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		
 		for (const segment of segments) {
 			if (segment === '..') {
-				if (currentFolder && !currentFolder.isRoot()) {
-					currentFolder = currentFolder.parent as TFolder;
+				if (currentFolder && !currentFolder.isRoot() && currentFolder.parent instanceof TFolder) {
+					currentFolder = currentFolder.parent;
 				} else {
 					return null;
 				}
@@ -233,8 +232,8 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 			const segment = segments[i];
 			
 			if (segment === '..') {
-				if (currentFolder && !currentFolder.isRoot()) {
-					currentFolder = currentFolder.parent as TFolder;
+				if (currentFolder && !currentFolder.isRoot() && currentFolder.parent instanceof TFolder) {
+					currentFolder = currentFolder.parent;
 				} else {
 					return null;
 				}
@@ -301,7 +300,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 		let current: TFolder | null = folder;
 		while (current && !current.isRoot()) {
 			pathParts.unshift(current.name + '/');
-			current = current.parent as TFolder | null;
+			current = current.parent;
 		}
 		return pathParts.join('');
 	}
@@ -354,7 +353,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 					line: cursor.line,
 					ch: replaceStartCh + whitespaceBefore.length + 1 + newPath.length,
 				};
-				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+				window.setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			} else {
 				// No / in currentQuery - remove everything but @
 				editor.replaceRange(
@@ -368,7 +367,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 					line: cursor.line,
 					ch: replaceStartCh + whitespaceBefore.length + 1,
 				};
-				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+				window.setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			}
 		} else {
 			const newText = `@${suggestion.name}`;
@@ -385,7 +384,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 					line: cursor.line,
 					ch: replaceStartCh + whitespaceBefore.length + newText.length,
 				};
-				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+				window.setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			} else if (suggestion.type === 'file') {
 				// For files, also keep the suggest open or reopen it to show ..
 				// Move cursor to end of path
@@ -393,7 +392,7 @@ export class PathAutocompleteSuggest extends EditorSuggest<PathSuggestion> {
 					line: cursor.line,
 					ch: replaceStartCh + whitespaceBefore.length + newText.length,
 				};
-				setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
+				window.setTimeout(() => { editor.setCursor(newCursorPos); }, 10);
 			}
 		}
 	}

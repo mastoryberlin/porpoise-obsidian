@@ -44,7 +44,7 @@ export interface GraphBoard {
         folders: string[];
         status: string[];
         tagMode?: 'AND' | 'OR';
-        conditions?: any[];
+        conditions?: unknown[];
     };
     data: {
         layout: Record<string, { x: number; y: number }>;
@@ -107,7 +107,6 @@ function parseH1Tasks(content: string, file: TFile): TaskCacheItem[] {
             // Determine status: ! suffix or below separator = in-progress
             let status = ' ';
             let statusCategory: 'backlog' | 'in_progress' | 'finished' = 'backlog';
-            let isInProgressFromSeparator = false;
 
             if (headerText.endsWith('!')) {
                 status = '/';
@@ -115,7 +114,6 @@ function parseH1Tasks(content: string, file: TFile): TaskCacheItem[] {
             } else if (i > 0 && lastSeparatorLine === i - 1) {
                 status = '/';
                 statusCategory = 'in_progress';
-                isInProgressFromSeparator = true;
             }
 
             // Create stable ID
@@ -213,13 +211,13 @@ export default class TaskGraphPlugin extends Plugin {
 
         // Commands with porpoise: prefix
         this.addCommand({
-            id: 'porpoise:open-task-graph',
+            id: 'open-task-graph',
             name: 'Open task graph',
             callback: () => { void this.activateView(); }
         });
 
         this.addCommand({
-            id: 'porpoise:layout-task-graph',
+            id: 'layout-task-graph',
             name: 'Auto-layout task graph (smart arrange)',
             callback: () => {
                 const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TASK_GRAPH);
@@ -240,7 +238,7 @@ export default class TaskGraphPlugin extends Plugin {
         });
 
         this.addCommand({
-            id: 'porpoise:rebuild-task-index',
+            id: 'rebuild-task-index',
             name: 'Rebuild task document index',
             callback: () => { void this.initializeCache(true); }
         });
@@ -325,7 +323,7 @@ export default class TaskGraphPlugin extends Plugin {
         for (const file of files) {
             const entry = this.taskSnapshots.get(file.path);
             if (snapshotMatches(entry, file.stat)) {
-                if (entry!.tasks.length) this.taskCache.set(file.path, entry!.tasks as TaskCacheItem[]);
+                if (entry!.tasks.length) this.taskCache.set(file.path, entry!.tasks);
                 else this.taskCache.delete(file.path);
             } else {
                 pending.push(file);
@@ -359,7 +357,7 @@ export default class TaskGraphPlugin extends Plugin {
 
         const entry = this.taskSnapshots.get(file.path);
         if (this.snapshotSignature && snapshotMatches(entry, file.stat)) {
-            this.storeFileTasks(file.path, entry!.tasks as TaskCacheItem[], triggerRefresh);
+            this.storeFileTasks(file.path, entry!.tasks, triggerRefresh);
             return;
         }
 
@@ -447,6 +445,7 @@ export default class TaskGraphPlugin extends Plugin {
                     folder = config.folders.prepFiles;
                 }
             }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ignored
         } catch (_) {
             // Ignore errors
         }
@@ -466,6 +465,7 @@ export default class TaskGraphPlugin extends Plugin {
                     fileName = config.obsidian.taskGraph.prepFileForNewTasks;
                 }
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ignored
         } catch (_) {
             // Ignore errors
         }

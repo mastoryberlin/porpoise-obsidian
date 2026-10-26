@@ -1,4 +1,4 @@
-import { Editor, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import { PathAutocompleteSuggest } from './autocomplete/pathSuggest';
 import {
 	DEFAULT_PATH_SETTINGS,
