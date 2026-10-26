@@ -1,34 +1,50 @@
-import { Editor, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import { PathAutocompleteSuggest } from './autocomplete/pathSuggest';
 import {
-	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
+	DEFAULT_PATH_SETTINGS,
+	PathSettings,
+	PathSettingTab,
 } from './settings';
+import TaskGraphPlugin from './features/task-graph/main';
+import { TaskGraphView, VIEW_TYPE_TASK_GRAPH } from './features/task-graph/TaskGraphView';
 
-// Remember to rename these classes and interfaces!
+// Combined settings
+export interface PorpoiseSettings {
+	pathSettings: PathSettings;
+}
 
-export default class PorpoisePathAutocompletePlugin extends Plugin {
-	settings!: MyPluginSettings;
+export const DEFAULT_SETTINGS: PorpoiseSettings = {
+	pathSettings: DEFAULT_PATH_SETTINGS,
+};
+
+// Main plugin class
+export default class PorpoisePlugin extends Plugin {
+	settings!: PorpoiseSettings;
+	taskGraphPlugin!: TaskGraphPlugin;
 
 	async onload() {
 		await this.loadSettings();
 
-		// Register the path autocomplete
-		this.registerEditorSuggest(new PathAutocompleteSuggest(this.app));
-		
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		// Load path autocomplete
+		const suggest = new PathAutocompleteSuggest(this.app);
+		this.registerEditorSuggest(suggest);
+
+		// Load task graph feature
+		this.taskGraphPlugin = new TaskGraphPlugin(this.app, this.manifest);
+		this.registerView(VIEW_TYPE_TASK_GRAPH, (leaf) => new TaskGraphView(leaf, this.taskGraphPlugin));
+		await this.taskGraphPlugin.onload();
+
+		// Settings tab
+		this.addSettingTab(new PathSettingTab(this.app, this));
 	}
 
-	onunload() {}
+	onunload() {
+		this.taskGraphPlugin.onunload();
+	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
-		);
+		const loadedData = (await this.loadData()) as Partial<PorpoiseSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 	}
 
 	async saveSettings() {
