@@ -13,6 +13,7 @@ import { taskListsEqual } from './taskCacheEquality';
 import { readTaskSnapshot, writeTaskSnapshot, snapshotMatches, TaskSnapshotEntry } from './taskSnapshot';
 import type { GraphGroup } from './groups';
 import { remapGraphReferences } from './groups';
+import { FilterCondition } from './taskFilters';
 
 export interface TextNodeData { id: string; text: string; x: number; y: number; }
 
@@ -44,7 +45,7 @@ export interface GraphBoard {
         folders: string[];
         status: string[];
         tagMode?: 'AND' | 'OR';
-        conditions?: unknown[];
+        conditions?: FilterCondition[];
     };
     data: {
         layout: Record<string, { x: number; y: number }>;
@@ -445,7 +446,7 @@ export default class TaskGraphPlugin extends Plugin {
                     folder = config.folders.prepFiles;
                 }
             }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ignored
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ignored             
         } catch (_) {
             // Ignore errors
         }
