@@ -477,7 +477,16 @@ export default class TaskGraphPlugin extends Plugin {
     async createNewTaskInPrepFile(text: string = 'New Task'): Promise<string> {
         const filePath = await this.getNewTasksFilePath();
         const header = `# ${text}`;
-        return this.appendTaskToFile(filePath, header);
+        await this.appendTaskToFile(filePath, header);
+        
+        // Generate the task ID that will be created by parseH1Tasks
+        const cleanHeaderText = text.replace(/!$/, '').trim();
+        const textHash = cleanHeaderText
+            .substring(0, 50)
+            .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+        const taskId = `${filePath}::#${textHash}`;
+        
+        return taskId;
     }
 
 

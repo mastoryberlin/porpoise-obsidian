@@ -55,7 +55,7 @@ export function useGroupWorkspace(plugin: TaskGraphPlugin, boardId: string, view
 
     const sourcePath = (id: string): string | undefined => {
         const ids = groups().some(group => group.id === id) ? groupDescendants(groups(), id) : new Set([id]);
-        return [...plugin.taskCache.values()].flat().find(task => ids.has(task.id) && task.source === 'checklist')?.path;
+        return [...plugin.taskCache.values()].flat().find(task => ids.has(task.id) && (task.source === 'checklist' || task.source === 'h1'))?.path;
     };
     const collapse = async (id: string) => {
         const existing = groups().find(group => group.id === id || group.members.includes(id));

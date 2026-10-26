@@ -5,7 +5,7 @@ interface RelationData { origin?: 'document'; }
 
 /** Reconcile only tracked document edges; untracked and manual edges remain intact. */
 export function synchronizeHierarchy(tasks: TaskCacheItem[], edges: Edge<RelationData>[]) {
-    const checklist = tasks.filter(task => task.source === 'checklist');
+    const checklist = tasks.filter(task => task.source === 'checklist' || task.source === 'h1');
     const byLine = new Map(checklist.map(task => [`${task.path}::${task.line}`, task]));
     const expected = new Map<string, Edge<RelationData>>();
     const pair = (source: string, target: string) => JSON.stringify([source, target]);

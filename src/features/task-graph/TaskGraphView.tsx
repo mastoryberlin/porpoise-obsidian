@@ -687,9 +687,20 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
               setCreateTarget({ sourceNodeId: source.id, sourcePath: path });
           } else {
               // Create new task in prep file for new tasks
-              void plugin.createNewTaskInPrepFile().then(newTaskId => {
-                  if (newTaskId) {
-                      void connectGraphObjects(plugin, activeBoardId, source.id, newTaskId, nodes);
+              void plugin.createNewTaskInPrepFile().then(async (newTaskPath) => {
+                  if (newTaskPath) {
+                      const board = plugin.settings.boards.find(b => b.id === activeBoardId);
+                      if (board) {
+                          const parentNode = nodes.find(n => n.id === source.id);
+                          let newX = 0, newY = 0;
+                          if (parentNode) {
+                              newX = parentNode.position.x + (parentNode.type === 'groupFrame' ? (parentNode.width || 300) + 80 : 400);
+                              newY = parentNode.position.y;
+                          }
+                          board.data.layout = { ...board.data.layout, [newTaskPath]: { x: newX, y: newY } };
+                          await plugin.saveSettings();
+                      }
+                      await connectGraphObjects(plugin, activeBoardId, source.id, newTaskPath, nodes);
                       setRefreshKey(prev => prev + 1);
                   }
               });
