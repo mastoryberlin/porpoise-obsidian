@@ -89,6 +89,8 @@ function parseH1Tasks(content: string, file: TFile): TaskCacheItem[] {
     const tasks: TaskCacheItem[] = [];
     let currentNotes: string[] = [];
     let lastSeparatorLine = -1;
+    // Porpoise moves completed tasks into the done file, so all of them are finished.
+    const isDoneFile = file.basename === '_done';
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i]!;
@@ -109,7 +111,11 @@ function parseH1Tasks(content: string, file: TFile): TaskCacheItem[] {
             let status = ' ';
             let statusCategory: 'backlog' | 'in_progress' | 'finished' = 'backlog';
 
-            if (headerText.endsWith('!')) {
+            // Tasks in the done file are always finished
+            if (isDoneFile) {
+                status = 'x';
+                statusCategory = 'finished';
+            } else if (headerText.endsWith('!')) {
                 status = '/';
                 statusCategory = 'in_progress';
             } else if (i > 0 && lastSeparatorLine === i - 1) {

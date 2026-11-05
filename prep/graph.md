@@ -1,4 +1,5 @@
 #graph
+# fix: `readTaskSnapshot`'s validator only accepts checklist/tasknotes sources, so all h1 snapshots are discarded on load
 
 ---
 # status-based filters [#3](https://github.com/mastoryberlin/porpoise-obsidian/issues/3)
