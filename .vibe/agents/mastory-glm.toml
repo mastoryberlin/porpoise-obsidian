@@ -69,5 +69,6 @@ alias = "glm-5.3"
 temperature = 0.2
 input_price = 0.0
 output_price = 0.0
+max_context_length = 1048576
 
 active_model = "glm-5.3"

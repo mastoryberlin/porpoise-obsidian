@@ -1,0 +1,2 @@
+This feature is a fork of the "Spatial Task Graph" plugin and has little to do with the other features.
+Do not mess with this folder unless your task explicitly requires you to deal with the "task graph"!

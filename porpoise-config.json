@@ -5,6 +5,21 @@
     "repo": "porpoise-obsidian",
     "project": {
       "number": 9
+    },
+    "labels": {
+      "sort": [
+        "porpoise",
+        "autocomplete",
+        "graph"
+      ],
+      "imply": {
+        "autocomplete":[
+          "porpoise"
+        ],
+        "graph":[
+          "porpoise"
+        ]
+      }
     }
   },
   "orca": {

@@ -1,10 +1,11 @@
-# Obsidian community plugin
+# Porpoise Obsidian Plugin
 
 ## Project overview
 
-- Target: Obsidian Community Plugin (TypeScript → bundled JavaScript).
-- Entry point: `src/main.ts` compiled to `main.js` and loaded by Obsidian.
-- Required release artifacts: `main.js`, `manifest.json`, and optional `styles.css`.
+- Target: Obsidian Community Plugin (TypeScript → bundled JavaScript)
+- Facilitates working with Obsidian in a [Porpoise](https://github.com/mastoryberlin/porpoise/blob/main/README.md) setup
+- Entry point: `src/main.ts` compiled to `main.js` and loaded by Obsidian
+- Required release artifacts: `main.js`, `manifest.json`, and optional `styles.css`
 
 ## Environment & tooling
 
@@ -51,6 +52,9 @@ npm run build
       commands/         # Command implementations
         command1.ts
         command2.ts
+			features/         # Independent features bundled together in this plugin
+	      feature1/
+	      feature2/
       ui/              # UI components, modals, views
         modal.ts
         view.ts

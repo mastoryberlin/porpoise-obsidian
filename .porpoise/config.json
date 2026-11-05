@@ -10,14 +10,17 @@
       "properties": {
         "prompts": {
           "default": "prompts",
+          "description": "The folder, relative to the repo/branch root, in which your context prompts are stored. Per-label context prompts live in its \"labels\" subfolder - one subfolder per GitHub label, named after the label's lowercase, kebab-cased form (e.g. label \"deploy env\" -> prompts/labels/deploy-env/).",
           "type": "string"
         },
         "prepFiles": {
           "default": "prep",
+          "description": "The folder, relative to the repo/branch root, in which your prep files are stored (the ones where you prepare tasks to be turned into GH issues).",
           "type": "string"
         },
         "labelStubs": {
           "default": "labels",
+          "description": "\"Label stubs\" are artifacts created by `por sync` to make Obsidian understand how your labels imply each other. Use this option to customize the folder, relative to the repo/branch root, in which Porpoise stores them.",
           "type": "string"
         }
       },
@@ -28,6 +31,7 @@
       "properties": {
         "accessTokenEnvVar": {
           "default": "GITHUB_PAT",
+          "description": "For Porpoise",
           "type": "string"
         },
         "org": {
@@ -144,6 +148,22 @@
         "agentCommands"
       ],
       "additionalProperties": false
+    },
+    "obsidian": {
+      "type": "object",
+      "properties": {
+        "taskGraph": {
+          "type": "object",
+          "properties": {
+            "prepFileForNewTasks": {
+              "default": "_new",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [
@@ -155,11 +175,14 @@
     "label": {
       "type": "string",
       "enum": [
-        "dry"
+        "autocomplete",
+        "dry",
+        "graph",
+        "porpoise"
       ]
     },
     "labelCombo": {
-      "pattern": "^(?:dry)+(,(?:dry)+)*$"
+      "pattern": "^(?:autocomplete|dry|graph|porpoise)+(,(?:autocomplete|dry|graph|porpoise)+)*$"
     },
     "status": {
       "type": "string",
