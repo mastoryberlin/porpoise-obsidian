@@ -91,7 +91,7 @@ If you have multiple URLs, you can also do:
 
 The task graph derives each task's status from its title:
 
-- A task whose title ends without a GitHub issue link is **Pending**.
+- A task whose title ends without a GitHub issue link is **Pending**, or **Finished** when it lives in a `_done.md` note (the Porpoise convention for finished tasks).
 - A task whose title ends with a GitHub issue link (as created by `por prep`) is resolved via the GitHub API using [Octokit](https://github.com/octokit/octokit.js):
     - issue closed -> **Finished**
     - issue open and blocked, either by an incoming connector in the graph or by unresolved "blocked by" dependencies on GitHub -> **Blocked**

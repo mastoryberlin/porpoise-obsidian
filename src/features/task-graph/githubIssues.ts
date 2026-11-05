@@ -28,6 +28,13 @@ export const STATUS_FILTERS: { key: TaskStatusKey, label: string, zhLabel: strin
 
 // Task titles that `por prep` creates issues for end with a link to the issue, e.g.
 // "# acquire a #green apple [#12](https://github.com/org/repo/issues/12)".
+// Finished tasks are moved into a `_done.md` note by convention.
+const DONE_NOTE_NAME = '_done.md';
+
+/** True for notes tasks are moved into once they are done (e.g. `prep/_done.md`). */
+export function isDoneNote(path: string): boolean {
+    return path === DONE_NOTE_NAME || path.endsWith(`/${DONE_NOTE_NAME}`);
+}
 const MARKDOWN_ISSUE_LINK = /\[[^\]]*\]\(https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/issues\/(\d+)\/?\)\s*$/;
 const BARE_ISSUE_LINK = /https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/issues\/(\d+)\/?\s*$/;
 
@@ -48,18 +55,18 @@ export function githubIssueKey(issue: GithubIssueRef): string {
 
 /**
  * Status algorithm:
- * - no issue link -> Pending
+ * - no issue link -> Finished when the task lives in a `_done.md` note, Pending otherwise
  * - issue closed -> Finished
  * - issue open and blocked (incoming graph connector or unresolved GitHub "blocked by") -> Blocked
  * - issue open otherwise -> In progress
  * A linked issue whose state could not be fetched (yet) counts as In progress.
  */
 export function resolveTaskStatus(
-    issue: GithubIssueRef | undefined,
+    task: { issue?: GithubIssueRef, path: string },
     issueStatus: GithubIssueStatus | undefined,
     blockedByConnector: boolean,
 ): TaskStatusKey {
-    if (!issue) return 'pending';
+    if (!task.issue) return isDoneNote(task.path) ? 'finished' : 'pending';
     if (!issueStatus) return 'in_progress';
     if (issueStatus.state === 'closed') return 'finished';
     return issueStatus.blockedByUnresolved || blockedByConnector ? 'blocked' : 'in_progress';

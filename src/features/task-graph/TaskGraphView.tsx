@@ -600,7 +600,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       const blockedByConnector = new Set(savedEdges.filter(edge => taskIds.has(edge.source)).map(edge => edge.target));
       const issueStatuses = plugin.issueStatusService;
       const statusOf = (task: TaskCacheItem): TaskStatusKey => resolveTaskStatus(
-          task.issue,
+          task,
           task.issue && issueStatuses ? issueStatuses.get(githubIssueKey(task.issue)) : undefined,
           blockedByConnector.has(task.id));
       const statusFilter = boardConfig?.filters.status ?? [];
