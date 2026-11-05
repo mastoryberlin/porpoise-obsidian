@@ -11,5 +11,3 @@ Implement this feature still missing from the Task Graph feature: path-based fil
 			- yes ->set task status to "Blocked"
 			- no ->set task status to "In progress"
 	- no ->set task status to "Pending"
-# display tasks from `_done.md` as "Finished" [#4](https://github.com/mastoryberlin/porpoise-obsidian/issues/4)
-Implement this feature still missing from the Task Graph feature. Plain and simply this. Touch nothing else.
