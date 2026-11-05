@@ -26,8 +26,10 @@ export function readTaskSnapshot(raw: string, signature: string): Map<string, Ta
             if (!entry.tasks.every(task => task && task.path === path
                 && ['id', 'text', 'notes', 'status', 'file', 'rawText', 'rawStatus'].every(key => typeof task[key as keyof TaskCacheItem] === 'string')
                 && Number.isFinite(task.line) && Number.isFinite(task.endLine)
-                && (task.source === 'checklist' || task.source === 'tasknotes')
-                && ['backlog', 'in_progress', 'finished'].includes(task.statusCategory))) continue;
+                && (task.source === 'checklist' || task.source === 'tasknotes' || task.source === 'h1')
+                && ['backlog', 'in_progress', 'finished'].includes(task.statusCategory)
+                && (task.issue === undefined || (typeof task.issue.owner === 'string' && typeof task.issue.repo === 'string'
+                    && Number.isInteger(task.issue.number) && task.issue.number > 0)))) continue;
             entries.set(path, entry);
         }
         return entries;
