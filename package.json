@@ -1,6 +1,6 @@
 {
 	"name": "porpoise",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "Path autocomplete and H1-header based task graph visualization for Obsidian",
 	"main": "main.js",
 	"type": "module",
@@ -9,7 +9,7 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
-		"release"		:"npm i && npm run build && npm version patch && npm push --tags"
+		"release": "npm i && npm run build && npm version patch && npm push --tags"
 	},
 	"keywords": [],
 	"license": "0-BSD",
