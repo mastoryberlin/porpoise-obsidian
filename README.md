@@ -87,6 +87,20 @@ If you have multiple URLs, you can also do:
 }
 ```
 
+## Task graph: GitHub issue statuses and status filters
+
+The task graph derives each task's status from its title:
+
+- A task whose title ends without a GitHub issue link is **Pending**, or **Finished** when it lives in a `_done.md` note (the Porpoise convention for finished tasks).
+- A task whose title ends with a GitHub issue link (as created by `por prep`) is resolved via the GitHub API using [Octokit](https://github.com/octokit/octokit.js):
+    - issue closed -> **Finished**
+    - issue open and blocked, either by an incoming connector in the graph or by unresolved "blocked by" dependencies on GitHub -> **Blocked**
+    - issue open otherwise -> **In progress**
+
+Use the status checkboxes in the board's filter panel to show only tasks in the selected statuses; when no status is checked, all tasks are shown. Issue states are refreshed on startup and every 10 minutes, or on demand via the **Porpoise: Refresh GitHub issue statuses** command.
+
+**Privacy & network disclosure:** resolving statuses sends requests to `api.github.com` containing only the issue's owner, repository and issue number parsed from task titles. No note contents are transmitted. Configure a personal access token in **Settings → Porpoise** for higher rate limits and access to the "blocked by" dependencies API; the token is stored locally in your vault's plugin data. Without a token, requests are made anonymously (60 requests/hour).
+
 ## API Documentation
 
 See https://docs.obsidian.md

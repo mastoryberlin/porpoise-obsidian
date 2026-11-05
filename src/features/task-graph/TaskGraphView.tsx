@@ -19,7 +19,8 @@ import ReactFlow, {
   OnConnectStartParams
 } from 'reactflow';
 
-import TaskGraphPlugin, { GraphBoard } from './main';
+import TaskGraphPlugin, { GraphBoard, TaskCacheItem } from './main';
+import { githubIssueKey, resolveTaskStatus, STATUS_FILTERS, TaskStatusKey } from './githubIssues';
 import { synchronizeHierarchy } from './taskHierarchy';
 import { FilterCondition, getFilterConditions, filterSuggestions, matchesFilterConditions } from './taskFilters';
 import { isSimplifiedChinese } from './language';
@@ -178,12 +179,13 @@ const TaskSidebar = React.memo(({ nodes, onNodeCenter, onStatusChange, onSearch 
     const rowHeight = 36;
     const rowGap = 6;
     const maxRows = Math.max(1, Math.floor((availableHeight - 198) / (3 * (rowHeight + rowGap))));
-    const { inProgress, pending, backlog } = React.useMemo(() => {
+    const { inProgress, blocked, pending, backlog } = React.useMemo(() => {
         const tasks = nodes.filter(isTaskNode);
         const groups = nodes.filter(node => node.type === 'groupFrame');
         const statusOf = (node: AppNode) => isTaskNode(node) ? (node.data.customStatus || 'backlog') : ((node.data as GroupNodeData).status || 'backlog');
         return {
             inProgress: [...tasks, ...groups].filter(n => statusOf(n) === 'in_progress'),
+            blocked: [...tasks, ...groups].filter(n => statusOf(n) === 'blocked'),
             pending: [...tasks, ...groups].filter(n => statusOf(n) === 'pending'),
             backlog: [...tasks, ...groups].filter(n => statusOf(n) === 'backlog' || statusOf(n) === 'default')
         };
@@ -205,7 +207,7 @@ const TaskSidebar = React.memo(({ nodes, onNodeCenter, onStatusChange, onSearch 
             </div>
         </div>
     );
-    return (<div ref={sidebarRef} className="task-sidebar" onMouseDown={stopProp} onWheel={stopProp} onContextMenu={stopProp}><div style={{ marginBottom: '16px', fontSize: '16px', lineHeight: '24px', flexShrink: 0, fontWeight: '800', letterSpacing: '-0.5px', color: 'var(--text-normal)'  , display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>My tasks<button type="button" className="task-sidebar-search" aria-label={isSimplifiedChinese() ? "搜索任务" : "Search tasks"} onClick={onSearch}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg></button></div>{renderList('In progress', inProgress, STATUS_COLORS['in_progress'], 'in-progress', 'in_progress')}{renderList('Pending', pending, STATUS_COLORS['pending'], 'pending', 'pending')}{renderList('Backlog', backlog, STATUS_COLORS['backlog'], 'backlog', 'backlog')}</div>);
+    return (<div ref={sidebarRef} className="task-sidebar" onMouseDown={stopProp} onWheel={stopProp} onContextMenu={stopProp}><div style={{ marginBottom: '16px', fontSize: '16px', lineHeight: '24px', flexShrink: 0, fontWeight: '800', letterSpacing: '-0.5px', color: 'var(--text-normal)'  , display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>My tasks<button type="button" className="task-sidebar-search" aria-label={isSimplifiedChinese() ? "搜索任务" : "Search tasks"} onClick={onSearch}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg></button></div>{renderList('In progress', inProgress, STATUS_COLORS['in_progress'], 'in-progress', 'in_progress')}{renderList('Blocked', blocked, STATUS_COLORS['blocked'], 'blocked', 'blocked')}{renderList('Pending', pending, STATUS_COLORS['pending'], 'pending', 'pending')}{renderList('Backlog', backlog, STATUS_COLORS['backlog'], 'backlog', 'backlog')}</div>);
 }, (previous, next) => previous.onNodeCenter === next.onNodeCenter
     && previous.onStatusChange === next.onStatusChange && previous.onSearch === next.onSearch
     && previous.nodes.length === next.nodes.length && previous.nodes.every((node, index) => {
@@ -395,7 +397,8 @@ const ControlPanel = ({ boards, activeBoardId, onSwitchBoard, onAddBoard, onRena
         <button className="task-add-condition" type="button" style={{ ...btnStyle, width: '100%' }} onClick={() => setConditions(rows => [...rows, { operator: 'AND', field: 'tag', value: '', enabled: true }])}>{zh ? '+ 添加筛选条件' : '+ Add condition'}</button>
         <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>{zh ? '按从上到下的顺序组合条件。' : 'Conditions combine from top to bottom.'}</div>
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>{[' ', '/', 'x'].map(status => (<label key={status} style={{fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--text-normal)'}}><input type="checkbox" className="filter-checkbox" checked={currentBoard.filters.status.includes(status)} onChange={() => { void onUpdateFilter('status', status); }} /> {status === ' ' ? 'Todo' : status === '/' ? 'Doing' : 'Done'}</label>))}</div>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>{STATUS_FILTERS.map(({ key, label, zhLabel }) => (<label key={key} style={{fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--text-normal)'}}><input type="checkbox" className="filter-checkbox" checked={currentBoard.filters.status.includes(key)} onChange={() => { void onUpdateFilter('status', key); }} /> {zh ? zhLabel : label}</label>))}</div>
+        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>{zh ? '状态筛选：不勾选任何状态即显示全部任务。' : 'Status filter: leave every status unchecked to show all tasks.'}</div>
 
         <button style={{...btnStyle, width: '100%', marginTop: '14px',
                         background: actionStates.filters === 'done' ? 'var(--interactive-success, #28a745)' : 'var(--interactive-accent)',
@@ -426,7 +429,7 @@ const HelpPanel = ({ onClose }: { onClose: () => void }) => {
                     'Select & pan: Middle/Right-drag to pan. Left-drag on empty space to box-select. Shift+click to multi-select.'
                 ]},
                 { heading: '🔍 Boards & filters', items: [
-                    'Filter: Use the top-right panel to filter by Tags/Folders. Use Up/Down arrows and Enter to autocomplete.',
+                    'Filter: Use the top-right panel to filter by tags, paths and statuses. Use Up/Down arrows and Enter to autocomplete.',
                     'Logic: Add tag or path conditions and choose And/Or. Conditions combine from top to bottom.',
                     'Boards: Create multiple boards. Zoom/pan positions are independently saved per board.'
                 ]},
@@ -588,9 +591,20 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
 
       const allTasks = plugin.getTasks(activeBoardId);
       const boardConfig = plugin.settings.boards.find(b => b.id === activeBoardId);
-      const tasks = boardConfig && boardConfig.filters ? allTasks.filter(t => matchesFilterConditions(t.text, t.path, getFilterConditions(boardConfig.filters))) : allTasks;
+      const conditions = boardConfig && boardConfig.filters ? getFilterConditions(boardConfig.filters) : null;
+      const matchedTasks = conditions ? allTasks.filter(t => matchesFilterConditions(t.text, t.path, conditions)) : allTasks;
       const savedLayout = boardConfig?.data.layout || {};
       const savedEdges = boardConfig?.data.edges || [];
+      // Resolve statuses from GitHub issues (resolveTaskStatus) and apply the board's status filter.
+      const taskIds = new Set(allTasks.map(task => task.id));
+      const blockedByConnector = new Set(savedEdges.filter(edge => taskIds.has(edge.source)).map(edge => edge.target));
+      const issueStatuses = plugin.issueStatusService;
+      const statusOf = (task: TaskCacheItem): TaskStatusKey => resolveTaskStatus(
+          task,
+          task.issue && issueStatuses ? issueStatuses.get(githubIssueKey(task.issue)) : undefined,
+          blockedByConnector.has(task.id));
+      const statusFilter = boardConfig?.filters.status ?? [];
+      const tasks = statusFilter.length ? matchedTasks.filter(t => statusFilter.includes(statusOf(t))) : matchedTasks;
       const savedNodeStatus = boardConfig?.data.nodeStatus || {};
       const savedTextNodes = boardConfig?.data.textNodes || [];
       const taskById = new Map(tasks.map(task => [task.id, task]));
@@ -611,7 +625,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
             id: t.id, type: 'task', position: { x: posX, y: posY },
             data: {
                 id: t.id, label: t.text, notes: t.notes, status: t.status, file: t.file, path: t.path, line: t.line, endLine: t.endLine,
-                customStatus: (t.source === 'tasknotes' || t.source === 'h1') ? t.statusCategory : finalCustomStatus,
+                customStatus: t.source === 'h1' ? statusOf(t) : (t.source === 'tasknotes' ? t.statusCategory : finalCustomStatus),
                 source: t.source, rawStatus: t.rawStatus,
                 hasChildren: (childrenById[t.id] || []).length > 0,
                 isCollapsed: false,
@@ -1100,7 +1114,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   };
 
 
-  const handleAddBoard = () => {void ( async () => { const prepFolder = await plugin.getPrepFolder(); const newBoard: GraphBoard = { id: Date.now().toString(), name: `Board ${plugin.settings.boards.length + 1}`, filters: { tags: [], excludeTags: [], folders: [prepFolder], status: [' ', '/'], tagMode: 'OR' }, data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...plugin.taskCache.keys()] } }; plugin.settings.boards.push(newBoard); await plugin.saveSettings(); handleSwitchBoard(newBoard.id); })()};
+  const handleAddBoard = () => {void ( async () => { const prepFolder = await plugin.getPrepFolder(); const newBoard: GraphBoard = { id: Date.now().toString(), name: `Board ${plugin.settings.boards.length + 1}`, filters: { tags: [], excludeTags: [], folders: [prepFolder], status: [], tagMode: 'OR' }, data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [], taskPaths: [...plugin.taskCache.keys()] } }; plugin.settings.boards.push(newBoard); await plugin.saveSettings(); handleSwitchBoard(newBoard.id); })()};
 
   const handleArchiveBoard = async (id: string) => {
       const nextId = await plugin.archiveBoard(id);

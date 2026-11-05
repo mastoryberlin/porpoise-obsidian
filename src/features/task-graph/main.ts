@@ -14,6 +14,7 @@ import { readTaskSnapshot, writeTaskSnapshot, snapshotMatches, TaskSnapshotEntry
 import type { GraphGroup } from './groups';
 import { remapGraphReferences } from './groups';
 import { FilterCondition } from './taskFilters';
+import { GithubIssueRef, GithubIssueStatusService, parseGithubIssueLink, githubIssueKey, TASK_STATUS_KEYS } from './githubIssues';
 
 export interface TextNodeData { id: string; text: string; x: number; y: number; }
 
@@ -30,6 +31,7 @@ export interface TaskCacheItem {
     source: 'h1' | 'checklist' | 'tasknotes';
     rawStatus: string;
     statusCategory: 'backlog' | 'in_progress' | 'finished';
+    issue?: GithubIssueRef;
     parentLine?: number;
     notesStartLine?: number;
     notesEndLine?: number;
@@ -65,12 +67,13 @@ interface TaskGraphSettings {
     lastActiveBoardId: string;
     autoFitAfterLayout: boolean;
     autoSyncHierarchy: boolean;
+    githubToken: string;
 }
 
 const DEFAULT_BOARD: GraphBoard = {
     id: 'default',
     name: 'Main board',
-    filters: { tags: [], excludeTags: [], folders: ["prep/"], status: [' ', '/'], tagMode: 'OR' },
+    filters: { tags: [], excludeTags: [], folders: ["prep/"], status: [], tagMode: 'OR' },
     data: { layout: {}, edges: [], nodeStatus: {}, textNodes: [] },
 };
 
@@ -79,7 +82,10 @@ const DEFAULT_SETTINGS: TaskGraphSettings = {
     lastActiveBoardId: 'default',
     autoFitAfterLayout: true,
     autoSyncHierarchy: false,
+    githubToken: '',
 };
+
+const GITHUB_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 /**
  * Parse H1 headers from content
@@ -123,6 +129,9 @@ function parseH1Tasks(content: string, file: TFile): TaskCacheItem[] {
                 statusCategory = 'in_progress';
             }
 
+            // Track the GitHub issue the task title ends with, if any
+            const issue = parseGithubIssueLink(headerText);
+
             // Create stable ID
             const cleanHeaderText = headerText.replace(/!$/, '').trim();
             const textHash = cleanHeaderText
@@ -143,6 +152,7 @@ function parseH1Tasks(content: string, file: TFile): TaskCacheItem[] {
                 source: 'h1',
                 rawStatus: status,
                 statusCategory,
+                issue,
             };
 
             tasks.push(task);
@@ -174,7 +184,8 @@ export default class TaskGraphPlugin extends Plugin {
     isCacheInitialized: boolean = false;
     private settingsWriter = new SaveQueue(() => this.saveData(this.settings));
     private taskSnapshots = new Map<string, TaskSnapshotEntry>();
-    private snapshotSignature = 'h1';
+    private snapshotSignature = 'h1-issue-links';
+    issueStatusService?: GithubIssueStatusService;
     private snapshotLoaded = false;
     private snapshotLoad: Promise<void> | undefined;
     private snapshotTimer: number | undefined;
@@ -250,6 +261,18 @@ export default class TaskGraphPlugin extends Plugin {
             callback: () => { void this.initializeCache(true); }
         });
 
+        this.addCommand({
+            id: 'refresh-github-issue-statuses',
+            name: 'Refresh GitHub issue statuses',
+            callback: () => {
+                void this.refreshGithubIssueStatuses(0).then(() => new Notice('GitHub issue statuses refreshed.'));
+            }
+        });
+
+        this.registerInterval(window.setInterval(() => {
+            void this.refreshGithubIssueStatuses();
+        }, GITHUB_REFRESH_INTERVAL_MS));
+
         this.registerEvent(this.app.metadataCache.on('changed', (file) => {
             void this.updateFileCache(file);
         }));
@@ -295,7 +318,7 @@ export default class TaskGraphPlugin extends Plugin {
         }));
 
         this.app.workspace.onLayoutReady(() => {
-            void this.initializeCache();
+            void this.initializeCache().then(() => this.refreshGithubIssueStatuses());
         });
     }
 
@@ -313,6 +336,24 @@ export default class TaskGraphPlugin extends Plugin {
             })();
         }
         await this.snapshotLoad;
+    }
+
+    /** Loads the state of every GitHub issue referenced from task titles via Octokit. */
+    async refreshGithubIssueStatuses(maxAgeMs = GITHUB_REFRESH_INTERVAL_MS): Promise<void> {
+        if (!this.isCacheInitialized) return;
+        const issues = new Map<string, GithubIssueRef>();
+        for (const tasks of this.taskCache.values()) {
+            for (const task of tasks) {
+                if (task.issue) issues.set(githubIssueKey(task.issue), task.issue);
+            }
+        }
+        if (!issues.size) return;
+        const token = this.settings.githubToken;
+        if (!this.issueStatusService || this.issueStatusService.token !== token) {
+            this.issueStatusService = new GithubIssueStatusService(token);
+        }
+        await this.issueStatusService.refresh([...issues.values()], maxAgeMs);
+        this.debouncedRefresh();
     }
 
     async initializeCache(forceFullScan = false) {
@@ -403,6 +444,7 @@ export default class TaskGraphPlugin extends Plugin {
         else this.taskCache.delete(path);
         if (triggerRefresh && this.isCacheInitialized) this.trackTaskPath(path, tasks.length > 0);
         if (triggerRefresh && this.isCacheInitialized) this.debouncedRefresh();
+        if (tasks.some(task => task.issue)) void this.refreshGithubIssueStatuses();
     }
 
     private trackTaskPath(path: string, hasTasks: boolean) {
@@ -508,6 +550,9 @@ export default class TaskGraphPlugin extends Plugin {
             if (!board.filters?.folders?.length) {
                 board.filters = { ...board.filters, folders: [prepFolder] };
             }
+            // Migrate legacy status filter characters (' ', '/', 'x'); unchecked now means "show all".
+            board.filters.status = (board.filters.status || []).filter(status =>
+                (TASK_STATUS_KEYS as readonly string[]).includes(status));
         }
         const first = this.settings.boards[0];
         

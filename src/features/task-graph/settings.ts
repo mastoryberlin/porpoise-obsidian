@@ -45,6 +45,22 @@ export class TaskGraphSettingTab extends PluginSettingTab {
                 return toggle;
             });
 
+        // GitHub token for task graph issue status lookups
+        new Setting(containerEl)
+            .setName(zh ? 'GitHub 个人访问令牌' : 'GitHub personal access token')
+            .setDesc(zh
+                ? '任务图用它查询 issue 标题链接的 GitHub issue 状态与“blocked by”依赖。留空则以匿名方式查询（速率限制较低）。'
+                : 'Used by the task graph to look up the state and "blocked by" dependencies of GitHub issues linked in task titles. Leave empty to query anonymously with lower rate limits.')
+            .addText((text) => {
+                text.setPlaceholder('Personal access token')
+                    .setValue(this.plugin.settings.githubToken)
+                    .onChange(async (value) => {
+                        this.plugin.settings.githubToken = value.trim();
+                        await this.plugin.saveSettings();
+                    });
+                return text;
+            });
+
         // Clear index button
         containerEl.createEl('hr');
         new Setting(containerEl)
