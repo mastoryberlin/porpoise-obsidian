@@ -948,23 +948,31 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
           .catch(() => new Notice('Could not create connection. Try again.'));
   }, [plugin, activeBoardId, nodes]);
 
-  const onNodeDragStop = React.useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeDragStop = React.useCallback((event: React.MouseEvent, node: Node, draggedNodes: Node[]) => {
       groupWorkspace.selectionEnd(event);
       if (node.type === 'groupFrame') { void groupWorkspace.dragStop(node); return; }
       const board = plugin.settings.boards.find(b => b.id === activeBoardId);
       if(!board) return;
 
-      void debouncedSaveBoardData.then(save => {
-          if (node.type === 'task') {
-              const layout = { ...board.data.layout, [node.id]: node.position };
-              save(activeBoardId, { layout });
-              setRefreshKey(key => key + 1);
-          } else if (node.type === 'text') {
-              const textNodes = board.data.textNodes.map(tn => tn.id === node.id ? { ...tn, x: node.position.x, y: node.position.y } : tn);
-              save(activeBoardId, { textNodes });
+      // Persist positions before refreshing: a debounced save used to land only after
+      // the refresh below, so the scene was rebuilt from the stale layout and dragged
+      // nodes snapped back to their previous position until they were dragged a second time.
+      const moved = (draggedNodes.length > 0 ? draggedNodes : [node]).filter(item => item.type === 'task' || item.type === 'text');
+      if (moved.length === 0) return;
+      const layout = { ...board.data.layout };
+      const textNodes = (board.data.textNodes ?? []).map(tn => ({ ...tn }));
+      for (const item of moved) {
+          if (item.type === 'task') {
+              layout[item.id] = item.position;
+          } else {
+              const textNode = textNodes.find(tn => tn.id === item.id);
+              if (textNode) { textNode.x = item.position.x; textNode.y = item.position.y; }
           }
-      });
-  }, [plugin, activeBoardId, debouncedSaveBoardData]);
+      }
+      void plugin.saveBoardData(activeBoardId, { layout, textNodes })
+          .then(() => setRefreshKey(key => key + 1))
+          .catch(() => new Notice('Could not save node position.'));
+  }, [plugin, activeBoardId]);
 
   const handleSaveTextNode = async (id: string, text: string) => { const board = plugin.settings.boards.find(b => b.id === activeBoardId); if(board) { const textNodes = board.data.textNodes.map(tn => tn.id === id ? { ...tn, text } : tn); await plugin.saveBoardData(activeBoardId, { textNodes }); } };
 
