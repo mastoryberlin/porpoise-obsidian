@@ -10,5 +10,5 @@ This feature is a WIP; implementation status/roadmap below:
 - [x] dependency connections between tasks
 	- [x] add dependencies
 	- [x] create new tasks from the "+" option when dragging a connector onto empty canvas space
-- [ ] display tasks from `_done.md` as "Finished"
+- [x] display tasks from `_done.md` as "Finished"
 - [x] status-based filters

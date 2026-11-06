@@ -55,7 +55,8 @@ export function githubIssueKey(issue: GithubIssueRef): string {
 
 /**
  * Status algorithm:
- * - no issue link -> Finished when the task lives in a `_done.md` note, Pending otherwise
+ * - task in a `_done.md` note -> Finished (regardless of its issue's state)
+ * - no issue link -> Pending
  * - issue closed -> Finished
  * - issue open and blocked (incoming graph connector or unresolved GitHub "blocked by") -> Blocked
  * - issue open otherwise -> In progress
@@ -66,7 +67,8 @@ export function resolveTaskStatus(
     issueStatus: GithubIssueStatus | undefined,
     blockedByConnector: boolean,
 ): TaskStatusKey {
-    if (!task.issue) return isDoneNote(task.path) ? 'finished' : 'pending';
+    if (isDoneNote(task.path)) return 'finished';
+    if (!task.issue) return 'pending';
     if (!issueStatus) return 'in_progress';
     if (issueStatus.state === 'closed') return 'finished';
     return issueStatus.blockedByUnresolved || blockedByConnector ? 'blocked' : 'in_progress';
