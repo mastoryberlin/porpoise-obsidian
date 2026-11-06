@@ -49,13 +49,19 @@ export function parseGithubIssueLink(title: string): GithubIssueRef | undefined 
     return { owner, repo, number: issueNumber, url: `https://github.com/${owner}/${repo}/issues/${issueNumber}` };
 }
 
+/** Removes a trailing GitHub issue link (Markdown or bare URL) from a task title. */
+export function stripGithubIssueLink(title: string): string {
+    return title.replace(MARKDOWN_ISSUE_LINK, '').replace(BARE_ISSUE_LINK, '').trim();
+}
+
 export function githubIssueKey(issue: GithubIssueRef): string {
     return `${issue.owner}/${issue.repo}#${issue.number}`;
 }
 
 /**
  * Status algorithm:
- * - no issue link -> Finished when the task lives in a `_done.md` note, Pending otherwise
+ * - task in a `_done.md` note -> Finished (regardless of its issue's state)
+ * - no issue link -> Pending
  * - issue closed -> Finished
  * - issue open and blocked (incoming graph connector or unresolved GitHub "blocked by") -> Blocked
  * - issue open otherwise -> In progress
@@ -66,7 +72,8 @@ export function resolveTaskStatus(
     issueStatus: GithubIssueStatus | undefined,
     blockedByConnector: boolean,
 ): TaskStatusKey {
-    if (!task.issue) return isDoneNote(task.path) ? 'finished' : 'pending';
+    if (isDoneNote(task.path)) return 'finished';
+    if (!task.issue) return 'pending';
     if (!issueStatus) return 'in_progress';
     if (issueStatus.state === 'closed') return 'finished';
     return issueStatus.blockedByUnresolved || blockedByConnector ? 'blocked' : 'in_progress';
