@@ -99,6 +99,11 @@ The task graph derives each task's status from its title:
 
 Use the status checkboxes in the board's filter panel to show only tasks in the selected statuses; when no status is checked, all tasks are shown. Issue states are refreshed on startup and every 10 minutes, or on demand via the **Porpoise: Refresh GitHub issue statuses** command.
 
+### One-click task actions on nodes
+
+- **Checkbox**: clicking a task node's checkbox moves its whole section (title and body) between its note and the sibling `_done.md` note in the same folder, finishing or unfinishing the task. The original note is remembered; tasks finished outside the plugin (e.g. by `por prep`) return to the prep folder's new-tasks note. Positions and connections are preserved.
+- **Mark as ready**: tasks without a GitHub issue link show a **Mark as ready** button next to the file link. It appends the `!` marker to the task title so `por prep` / `por watch` create an issue for it; while the marker is set, the button reads **Mark as not ready** and removes it again. Once an issue link exists, the button is replaced by a clickable link to that issue.
+
 **Privacy & network disclosure:** resolving statuses sends requests to `api.github.com` containing only the issue's owner, repository and issue number parsed from task titles. No note contents are transmitted. Configure a personal access token in **Settings → Porpoise** for higher rate limits and access to the "blocked by" dependencies API; the token is stored locally in your vault's plugin data. Without a token, requests are made anonymously (60 requests/hour).
 
 ## API Documentation

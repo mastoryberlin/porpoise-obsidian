@@ -14,7 +14,8 @@ import { readTaskSnapshot, writeTaskSnapshot, snapshotMatches, TaskSnapshotEntry
 import type { GraphGroup } from './groups';
 import { remapGraphReferences } from './groups';
 import { FilterCondition } from './taskFilters';
-import { GithubIssueRef, GithubIssueStatusService, parseGithubIssueLink, githubIssueKey, TASK_STATUS_KEYS } from './githubIssues';
+import { GithubIssueRef, GithubIssueStatusService, isDoneNote, parseGithubIssueLink, githubIssueKey, TASK_STATUS_KEYS } from './githubIssues';
+import { doneNotePath, moveTaskSection } from './taskMove';
 
 export interface TextNodeData { id: string; text: string; x: number; y: number; }
 
@@ -68,6 +69,7 @@ interface TaskGraphSettings {
     autoFitAfterLayout: boolean;
     autoSyncHierarchy: boolean;
     githubToken: string;
+    doneOrigins: Record<string, string>;
 }
 
 const DEFAULT_BOARD: GraphBoard = {
@@ -83,6 +85,7 @@ const DEFAULT_SETTINGS: TaskGraphSettings = {
     autoFitAfterLayout: true,
     autoSyncHierarchy: false,
     githubToken: '',
+    doneOrigins: {},
 };
 
 const GITHUB_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
@@ -281,11 +284,13 @@ export default class TaskGraphPlugin extends Plugin {
             this.taskSnapshots.delete(oldPath);
             this.fileUpdates.set(oldPath, (this.fileUpdates.get(oldPath) || 0) + 1);
             this.scheduleSnapshot();
+            this.settings.doneOrigins = Object.fromEntries(Object.entries(this.settings.doneOrigins)
+                .map(([id, origin]) => [this.remapPathRef(id, oldPath, file.path), this.remapPathRef(origin, oldPath, file.path)]));
             if (file instanceof TFile) void this.updateFileCache(file);
             if (this.taskCache.has(oldPath)) {
                 const tasks = this.taskCache.get(oldPath);
                 this.taskCache.delete(oldPath);
-                const remap = (id: string) => id === oldPath ? file.path : id.startsWith(`${oldPath}::`) ? file.path + id.slice(oldPath.length) : id;
+                const remap = (id: string) => this.remapPathRef(id, oldPath, file.path);
                 if (tasks) this.taskCache.set(file.path, tasks.map(task => ({
                     ...task,
                     id: remap(task.id),
@@ -304,6 +309,9 @@ export default class TaskGraphPlugin extends Plugin {
         }));
 
         this.registerEvent(this.app.vault.on('delete', (file) => {
+            for (const [id, origin] of Object.entries(this.settings.doneOrigins)) {
+                if (id.startsWith(`${file.path}::`) || origin === file.path) delete this.settings.doneOrigins[id];
+            }
             this.taskSnapshots.delete(file.path);
             this.fileUpdates.set(file.path, (this.fileUpdates.get(file.path) || 0) + 1);
             this.scheduleSnapshot();
@@ -587,6 +595,51 @@ export default class TaskGraphPlugin extends Plugin {
         this.settings.boards = deleteArchivedBoard(this.settings.boards, id);
         await this.saveSettings();
         this.viewRefresh?.();
+    }
+
+    /** Rewrites a path or task-id reference after its note was renamed. */
+    private remapPathRef(ref: string, oldPath: string, newPath: string): string {
+        return ref === oldPath ? newPath : ref.startsWith(`${oldPath}::`) ? newPath + ref.slice(oldPath.length) : ref;
+    }
+
+    /** Task id under the assumption the task's section lives in the given note. */
+    private taskIdInNote(notePath: string, title: string): string {
+        const cleanTitle = title.replace(/!$/, '').trim();
+        const textHash = cleanTitle
+            .substring(0, 50)
+            .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+        return `${notePath}::#${textHash}`;
+    }
+
+    /**
+     * One-click finish/unfinish: moves the task's section between its note and the
+     * sibling `_done.md` note, keeping boards, layouts, and connections attached.
+     */
+    async toggleTaskDone(task: TaskCacheItem): Promise<void> {
+        if (task.source !== 'h1') return;
+        const restoring = isDoneNote(task.path);
+        const targetPath = restoring
+            ? (this.settings.doneOrigins[task.id] ?? await this.getNewTasksFilePath())
+            : doneNotePath(task.path);
+        if (!(await moveTaskSection(this.app, task, targetPath, !restoring || !!task.issue))) return;
+
+        const oldId = task.id;
+        const newId = this.taskIdInNote(targetPath, task.text);
+        if (newId !== oldId) {
+            const remap = (id: string) => (id === oldId ? newId : id);
+            for (const board of this.settings.boards) {
+                board.data = remapGraphReferences(board.data, remap);
+            }
+        }
+        if (restoring) delete this.settings.doneOrigins[oldId];
+        else this.settings.doneOrigins[newId] = task.path;
+        await this.saveSettings();
+
+        for (const path of [task.path, targetPath]) {
+            const file = this.app.vault.getAbstractFileByPath(path);
+            if (file instanceof TFile) await this.updateFileCache(file);
+        }
+        this.debouncedRefresh();
     }
 
     async activateView() {

@@ -21,6 +21,7 @@ import ReactFlow, {
 
 import TaskGraphPlugin, { GraphBoard, TaskCacheItem } from './main';
 import { githubIssueKey, resolveTaskStatus, STATUS_FILTERS, TaskStatusKey } from './githubIssues';
+import { toggleReadyLine } from './taskMove';
 import { synchronizeHierarchy } from './taskHierarchy';
 import { FilterCondition, getFilterConditions, filterSuggestions, matchesFilterConditions } from './taskFilters';
 import { isSimplifiedChinese } from './language';
@@ -632,6 +633,7 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
                 onToggleCollapse: handleToggleCollapse,
                 onSaveNotes: handleSaveTaskNotes,
                 onEdit: handleEditTask, onToggleStatus: handleToggleTask,
+                onToggleReady: handleToggleReady,
                 onOpenFile: () => { void openTaskLocation(plugin.app, t); }
             }
         };
@@ -816,6 +818,12 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
   }, [nodes, view, chooseConnectionAction, placeConnectionChoices]);
 
   const handleToggleTask = async (id: string, currentStatus: string, path: string, line: number, source: 'checklist' | 'tasknotes' | 'h1'  ) => {
+      if (source === 'h1') {
+          // One-click finish: move the section between its note and `_done.md`, like `por prep`.
+          const task = [...plugin.taskCache.values()].flat().find(item => item.id === id);
+          if (task) await plugin.toggleTaskDone(task);
+          return;
+      }
       const newStatus = (currentStatus === ' ' || currentStatus === '/') ? 'x' : ' ';
       const newCustomStatus = newStatus === 'x' ? 'finished' : 'backlog';
 
@@ -914,6 +922,15 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
           void debouncedSaveBoardData.then(save => save(activeBoardId, { viewport }));
       }
   }, [plugin, activeBoardId, debouncedSaveBoardData, groupWorkspace.scope]);
+
+  const handleToggleReady = async (taskData: TaskNodeData) => {
+      const file = plugin.app.vault.getAbstractFileByPath(taskData.path);
+      if (!(file instanceof TFile)) return;
+      const lines = (await plugin.app.vault.read(file)).split('\n');
+      const next = toggleReadyLine(lines, taskData.line, taskData.label);
+      if (!next) return;
+      await plugin.updateTaskContent(taskData.path, next.index, next.index, next.header);
+  };
 
   const handleCreateTask = async (text: string) => {
       if (!createTarget) return;

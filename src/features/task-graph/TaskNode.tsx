@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
 import type { GroupRow } from './GroupNode';
-import { GithubIssueRef, githubIssueKey, stripGithubIssueLink } from './githubIssues';
+import { GithubIssueRef, githubIssueKey, isDoneNote, stripGithubIssueLink } from './githubIssues';
 
 export interface TaskNodeData {
     id: string; label: string; notes: string; status: string; file: string; path: string; line: number; endLine: number; customStatus: string;
     onEdit: (data: TaskNodeData) => void;
     source: 'checklist' | 'tasknotes' | 'h1'; rawStatus: string;
     onToggleStatus: (id: string, status: string, path: string, line: number, source: 'checklist' | 'tasknotes' | 'h1') => Promise<void>;
+    onToggleReady: (data: TaskNodeData) => void | Promise<void>;
     onOpenFile: (path: string) => void;
     onSaveNotes: (data: TaskNodeData, notes: string) => Promise<void>;
     hasChildren: boolean;
@@ -26,6 +27,8 @@ export const TaskNode = React.memo(({ data, isConnectable, showHandles = true }:
   const rawTitle = cleanText || data.label;
   // The trailing issue link is hidden from the title; it is rendered as a real link below.
   const displayTitle = data.issue ? (stripGithubIssueLink(rawTitle) || rawTitle) : rawTitle;
+  // A trailing `!` marks a task as ready for `por prep` / `por watch` to pick up.
+  const isReady = displayTitle.trimEnd().endsWith('!');
   const statusColor = STATUS_COLORS[data.customStatus as keyof typeof STATUS_COLORS] || STATUS_COLORS['default'];
 
   const [isExpanded, setIsExpanded] = React.useState(false);
@@ -69,20 +72,6 @@ export const TaskNode = React.memo(({ data, isConnectable, showHandles = true }:
                     {displayTitle}
                 </div>
 
-                {data.issue && (
-                    <a
-                        className="nodrag node-issue-link"
-                        href={data.issue.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={githubIssueKey(data.issue)}
-                        onMouseDown={e => e.stopPropagation()}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        ↗ #{data.issue.number}
-                    </a>
-                )}
-
                 <div
                         onClick={(e) => { e.stopPropagation(); const nextExpanded = !isExpanded; setIsExpanded(nextExpanded); setIsEditingNotes(nextExpanded); }}
                         onMouseDown={e => e.stopPropagation()}
@@ -115,7 +104,32 @@ export const TaskNode = React.memo(({ data, isConnectable, showHandles = true }:
           </div>
           <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', flex: 1 }}>{tags.map((tag, i) => (<span key={i} className="node-tag">{tag}</span>))}</div>
-              <div className="open-file-btn" onClick={(e) => { e.stopPropagation(); data.onOpenFile(data.path); }} title="Open file">↗ <span>{data.file}</span></div>
+              <div className="node-links">
+                  {data.issue ? (
+                      <a
+                          className="nodrag node-issue-link"
+                          href={data.issue.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={githubIssueKey(data.issue)}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={e => e.stopPropagation()}
+                      >
+                          ↗ #{data.issue.number}
+                      </a>
+                  ) : (data.source === 'h1' && !isDoneNote(data.path)) ? (
+                      <button
+                          type="button"
+                          className="nodrag node-issue-link node-ready-btn"
+                          title={isReady ? 'Remove the trailing ! so por prep / por watch leave this task alone' : 'Append a trailing ! so por prep / por watch pick this task up'}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={e => { e.stopPropagation(); void data.onToggleReady(data); }}
+                      >
+                          {isReady ? 'Mark as not ready' : 'Mark as ready'}
+                      </button>
+                  ) : null}
+                  <div className="open-file-btn" onClick={(e) => { e.stopPropagation(); data.onOpenFile(data.path); }} title="Open file">↗ <span>{data.file}</span></div>
+              </div>
           </div>
           {data.compactChildren && data.compactChildren.length > 0 && <div className="nodrag task-compact-children">
             {data.compactChildren.map(row => <div className="task-group-row" key={row.id} style={{ paddingLeft: row.depth * 12 }} onMouseDown={e => e.stopPropagation()}>
