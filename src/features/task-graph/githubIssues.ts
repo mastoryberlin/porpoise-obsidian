@@ -49,6 +49,11 @@ export function parseGithubIssueLink(title: string): GithubIssueRef | undefined 
     return { owner, repo, number: issueNumber, url: `https://github.com/${owner}/${repo}/issues/${issueNumber}` };
 }
 
+/** Removes a trailing GitHub issue link (Markdown or bare URL) from a task title. */
+export function stripGithubIssueLink(title: string): string {
+    return title.replace(MARKDOWN_ISSUE_LINK, '').replace(BARE_ISSUE_LINK, '').trim();
+}
+
 export function githubIssueKey(issue: GithubIssueRef): string {
     return `${issue.owner}/${issue.repo}#${issue.number}`;
 }

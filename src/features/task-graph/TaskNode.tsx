@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
 import type { GroupRow } from './GroupNode';
+import { GithubIssueRef, githubIssueKey, stripGithubIssueLink } from './githubIssues';
 
 export interface TaskNodeData {
     id: string; label: string; notes: string; status: string; file: string; path: string; line: number; endLine: number; customStatus: string;
@@ -13,6 +14,7 @@ export interface TaskNodeData {
     isCollapsed: boolean;
     compactChildren?: GroupRow[];
     onToggleCollapse: (id: string, collapsed: boolean) => Promise<void>;
+    issue?: GithubIssueRef;
 }
 
 
@@ -21,6 +23,9 @@ const extractTags = (text: string) => { if (!text) return { tags: [], cleanText:
 
 export const TaskNode = React.memo(({ data, isConnectable, showHandles = true }: { data: TaskNodeData, isConnectable: boolean, showHandles?: boolean }) => {
   const { tags, cleanText } = data.source === 'h1' ? { tags: [], cleanText: data.label } : extractTags(data.label);
+  const rawTitle = cleanText || data.label;
+  // The trailing issue link is hidden from the title; it is rendered as a real link below.
+  const displayTitle = data.issue ? (stripGithubIssueLink(rawTitle) || rawTitle) : rawTitle;
   const statusColor = STATUS_COLORS[data.customStatus as keyof typeof STATUS_COLORS] || STATUS_COLORS['default'];
 
   const [isExpanded, setIsExpanded] = React.useState(false);
@@ -61,8 +66,22 @@ export const TaskNode = React.memo(({ data, isConnectable, showHandles = true }:
             </div>
             <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '13px', lineHeight: '1.5', color: 'var(--text-normal)', fontWeight: '700', wordBreak: 'break-word', whiteSpace: 'pre-wrap', opacity: (data.status === 'x' ? 0.6 : 1), textDecoration: (data.status === 'x' ? 'line-through' : 'none') }}>
-                    {cleanText || data.label}
+                    {displayTitle}
                 </div>
+
+                {data.issue && (
+                    <a
+                        className="nodrag node-issue-link"
+                        href={data.issue.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={githubIssueKey(data.issue)}
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        ↗ #{data.issue.number}
+                    </a>
+                )}
 
                 <div
                         onClick={(e) => { e.stopPropagation(); const nextExpanded = !isExpanded; setIsExpanded(nextExpanded); setIsEditingNotes(nextExpanded); }}

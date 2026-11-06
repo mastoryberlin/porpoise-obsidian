@@ -70,6 +70,8 @@ input[type="checkbox"].filter-checkbox:checked::after { content: ''; position: a
 .react-flow__node.selected .text-node-wrapper { border-style: solid; border-color: var(--interactive-accent); }
 .text-node-textarea { background: transparent; border: none; color: inherit; width: 100%; text-align: center; resize: none; font-size: 14px; outline: none; overflow: hidden; }
 .node-tag { font-size: 10px; padding: 3px 8px; border-radius: 12px; font-weight: 600; background-color: var(--background-modifier-active-hover); color: var(--text-muted); }
+.node-issue-link { display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 12px; background-color: var(--background-modifier-active-hover); color: var(--text-muted); text-decoration: none; cursor: pointer; align-self: flex-start; }
+.node-issue-link:hover { background-color: var(--interactive-accent); color: var(--text-on-accent); }
 .edit-btn { opacity: 0; transition: all 0.2s; cursor: pointer; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--background-modifier-hover); color: var(--text-normal); flex-shrink: 0; font-size: 12px;}
 .task-node-wrapper:hover .edit-btn { opacity: 1; }
 .edit-btn:hover { background: var(--interactive-accent); color: white; }
