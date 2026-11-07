@@ -35,6 +35,14 @@ const DONE_NOTE_NAME = '_done.md';
 export function isDoneNote(path: string): boolean {
     return path === DONE_NOTE_NAME || path.endsWith(`/${DONE_NOTE_NAME}`);
 }
+
+// Porpoise auto-generates `_re.md` notes; their tasks should never clutter the graph.
+const EXCLUDED_NOTE_NAME = '_re.md';
+
+/** True for notes whose tasks are never collected for the graph (e.g. `prep/_re.md`). */
+export function isExcludedNote(path: string): boolean {
+    return path === EXCLUDED_NOTE_NAME || path.endsWith(`/${EXCLUDED_NOTE_NAME}`);
+}
 const MARKDOWN_ISSUE_LINK = /\[[^\]]*\]\(https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/issues\/(\d+)\/?\)\s*$/;
 const BARE_ISSUE_LINK = /https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/issues\/(\d+)\/?\s*$/;
 
