@@ -12,3 +12,4 @@ This feature is a WIP; implementation status/roadmap below:
 	- [x] create new tasks from the "+" option when dragging a connector onto empty canvas space
 - [x] display tasks from `_done.md` as "Finished"
 - [x] status-based filters
+- [x] mouse handling for pan+zoom: right/middle drag pans, wheel zooms, Ctrl+wheel scrolls, middle-click fits the view

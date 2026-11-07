@@ -37,6 +37,7 @@ import { useGroupWorkspace } from './useGroupWorkspace';
 import { groupDescendants, groupParents, projectLayoutEdges, anchorGroupLayout } from './groups';
 import { connectGraphObjects } from './groupConnections';
 import { ConnectionActions } from './ConnectionActions';
+import { registerCanvasMouseHandling } from './canvasMouse';
 
 export const VIEW_TYPE_TASK_GRAPH = 'task-graph-view';
 
@@ -427,7 +428,8 @@ const HelpPanel = ({ onClose }: { onClose: () => void }) => {
                 { heading: '📝 Canvas & notes', items: [
                     'Add note: Right-click empty canvas space -> "Add note". Link notes to tasks to act as categories.',
                     'Task details: Use Shift+Enter when editing a task to add multi-line notes underneath it.',
-                    'Select & pan: Middle/Right-drag to pan. Left-drag on empty space to box-select. Shift+click to multi-select.'
+                    'Select & pan: Middle/right-drag to pan. Left-drag on empty space to box-select. Shift+click to multi-select.',
+                    'Zoom & fit: Scroll to zoom, Ctrl+scroll to pan the canvas, middle-click to fit everything into view.'
                 ]},
                 { heading: '🔍 Boards & filters', items: [
                     'Filter: Use the top-right panel to filter by tags, paths and statuses. Use Up/Down arrows and Enter to autocomplete.',
@@ -452,7 +454,8 @@ const HelpPanel = ({ onClose }: { onClose: () => void }) => {
                 { heading: '📝 画布与批注', items: [
                     '独立批注：右键点击画布空白处选择 "Add note"。',
                     '任务详情：在编辑任务时使用 Shift+Enter 换行，即可为该任务添加折叠注释！',
-                    '批量与漫游：中键/右键平移画布。左键拖拽进行框选；按住 Shift 点击进行多选。'
+                    '批量与漫游：中键/右键平移画布。左键拖拽进行框选；按住 Shift 点击进行多选。',
+                    '缩放与全览：滚轮缩放画布，Ctrl+滚轮平移，中键点击一键全览。'
                 ]},
                 { heading: '🔍 画板与检索', items: [
                     '高效检索：支持键盘上下键与回车快速补全路径和标签。',
@@ -1119,6 +1122,31 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
       menu.showAtPosition({ x: event.nativeEvent.clientX, y: event.nativeEvent.clientY });
   }, [plugin, activeBoardId, nodes]);
 
+  // Canvas mouse behavior beyond React Flow's props: right-click menus open on mouse-up,
+  // middle-click fits the view, and Ctrl+wheel pans (plain wheel zooms via React Flow).
+  const canvasMouseRef = React.useRef({ nodes, edges, reactFlowInstance, onNodeContextMenu, onEdgeContextMenu, onPaneContextMenu, onMoveEnd });
+  canvasMouseRef.current = { nodes, edges, reactFlowInstance, onNodeContextMenu, onEdgeContextMenu, onPaneContextMenu, onMoveEnd };
+  React.useEffect(() => {
+      const container = canvasRef.current;
+      if (!container) return;
+      return registerCanvasMouseHandling(container, {
+          getNodes: () => canvasMouseRef.current.nodes,
+          getEdges: () => canvasMouseRef.current.edges,
+          fitView: () => canvasMouseRef.current.reactFlowInstance.fitView({ duration: 800, padding: 0.1 }),
+          panBy: (dx, dy) => {
+              const { reactFlowInstance: instance, onMoveEnd: persistViewport } = canvasMouseRef.current;
+              const viewport = instance.getViewport();
+              const next = { x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom };
+              instance.setViewport(next);
+              // Programmatic viewport updates bypass React Flow's onMoveEnd; persist manually.
+              persistViewport(null, next);
+          },
+          onNodeContextMenu: (event, node) => canvasMouseRef.current.onNodeContextMenu(event, node),
+          onEdgeContextMenu: (event, edge) => canvasMouseRef.current.onEdgeContextMenu(event, edge),
+          onPaneContextMenu: (event) => canvasMouseRef.current.onPaneContextMenu(event),
+      });
+  }, []);
+
   const handleSwitchBoard = (id: string) => {
       if (id === activeBoardId && !isBoardSwitching) return;
       boardSwitchTimers.current.forEach(timer => window.clearTimeout(timer));
@@ -1479,15 +1507,13 @@ const TaskGraphComponent = ({ plugin, view }: { plugin: TaskGraphPlugin, view: T
         onMoveEnd={onMoveEnd}
         onEdgeContextMenu={onEdgeContextMenu}
         onNodeContextMenu={onNodeContextMenu}
-        onPaneContextMenu={onPaneContextMenu}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={{ type: 'default', style: { strokeWidth: 2, stroke: 'var(--interactive-accent)' } }}
         fitView minZoom={0.1} maxZoom={4}
         nodesDraggable={true} nodesConnectable={true} elementsSelectable={true} nodeDragThreshold={2}
         snapToGrid={true} snapGrid={[24, 24]}
         proOptions={{ hideAttribution: true }}
-        panOnScroll={true} zoomOnScroll={true} preventScrolling={false}
-        selectionOnDrag={true} selectionMode={SelectionMode.Partial} panOnDrag={[1]} panActivationKeyCode="Space" multiSelectionKeyCode="Shift"
+        selectionOnDrag={true} selectionMode={SelectionMode.Partial} panOnDrag={[1, 2]} panActivationKeyCode="Space" multiSelectionKeyCode="Shift"
         connectionLineStyle={{ stroke: 'var(--interactive-accent)', strokeWidth: 2, strokeDasharray: '5,5' }}
         connectionLineType={ConnectionLineType.Bezier}
       >
