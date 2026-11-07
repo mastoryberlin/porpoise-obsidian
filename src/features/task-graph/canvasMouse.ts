@@ -6,7 +6,8 @@
  *  - right click (press + release without dragging) opens context menus on mouse-up,
  *    so a right drag never triggers a menu on platforms firing `contextmenu` on mouse-down
  *  - middle click (no drag) fits the graph into view
- *  - plain wheel zooms (React Flow default); Ctrl+wheel pans the canvas instead
+ *  - plain wheel zooms (React Flow default); Ctrl+wheel pans vertically and
+ *    Shift+wheel horizontally
  */
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { Edge, Node } from 'reactflow';
@@ -91,9 +92,9 @@ export function registerCanvasMouseHandling(container: HTMLElement, handlers: Ca
         handlers.onPaneContextMenu(menuEvent);
     };
 
-    // Plain wheel events zoom via React Flow; Ctrl+wheel pans instead.
+    // Plain wheel events zoom via React Flow; Ctrl/Shift+wheel pan instead.
     const onWheelCapture = (event: WheelEvent) => {
-        if (!event.ctrlKey || !isWithinCanvas(container, event.target)) return;
+        if (!(event.ctrlKey || event.shiftKey) || !isWithinCanvas(container, event.target)) return;
         event.preventDefault();
         event.stopPropagation();
         const scale = event.deltaMode === 1 ? WHEEL_LINE_PX : 1;

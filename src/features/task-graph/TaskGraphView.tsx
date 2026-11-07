@@ -429,7 +429,7 @@ const HelpPanel = ({ onClose }: { onClose: () => void }) => {
                     'Add note: Right-click empty canvas space -> "Add note". Link notes to tasks to act as categories.',
                     'Task details: Use Shift+Enter when editing a task to add multi-line notes underneath it.',
                     'Select & pan: Middle/right-drag to pan. Left-drag on empty space to box-select. Shift+click to multi-select.',
-                    'Zoom & fit: Scroll to zoom, Ctrl+scroll to pan the canvas, middle-click to fit everything into view.'
+                    'Zoom & fit: Scroll to zoom, Ctrl+scroll to pan vertically, Shift+scroll to pan horizontally, middle-click to fit everything into view.'
                 ]},
                 { heading: '🔍 Boards & filters', items: [
                     'Filter: Use the top-right panel to filter by tags, paths and statuses. Use Up/Down arrows and Enter to autocomplete.',
@@ -455,7 +455,7 @@ const HelpPanel = ({ onClose }: { onClose: () => void }) => {
                     '独立批注：右键点击画布空白处选择 "Add note"。',
                     '任务详情：在编辑任务时使用 Shift+Enter 换行，即可为该任务添加折叠注释！',
                     '批量与漫游：中键/右键平移画布。左键拖拽进行框选；按住 Shift 点击进行多选。',
-                    '缩放与全览：滚轮缩放画布，Ctrl+滚轮平移，中键点击一键全览。'
+                    '缩放与全览：滚轮缩放画布，Ctrl+滚轮纵向平移，Shift+滚轮横向平移，中键点击一键全览。'
                 ]},
                 { heading: '🔍 画板与检索', items: [
                     '高效检索：支持键盘上下键与回车快速补全路径和标签。',
