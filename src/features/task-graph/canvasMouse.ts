@@ -108,17 +108,26 @@ export function registerCanvasMouseHandling(container: HTMLElement, handlers: Ca
         if (event.button === 1 && isWithinCanvas(container, event.target)) event.preventDefault();
     };
 
+    // The window hosting the canvas (Obsidian may render views in popout windows).
+    const ownerWindow = container.ownerDocument.defaultView ?? window;
+
     container.addEventListener('contextmenu', onContextMenu, true);
     container.addEventListener('mousedown', onMouseDown, true);
     container.addEventListener('auxclick', onAuxClick, true);
     container.addEventListener('wheel', onWheelCapture, { capture: true, passive: false });
-    window.addEventListener('mouseup', onMouseUp);
+    // The mouseup needs the capture phase: d3-zoom (React Flow's panning) hooks mouseup
+    // on the window in the capture phase and ends pan gestures with
+    // stopImmediatePropagation(), which would swallow bubble-phase listeners and make
+    // every press look like a drag. Listeners on the same target + phase run in
+    // registration order; ours is registered once at mount, d3's per press, so ours
+    // runs first and can classify the release as a click.
+    ownerWindow.addEventListener('mouseup', onMouseUp, true);
 
     return () => {
         container.removeEventListener('contextmenu', onContextMenu, true);
         container.removeEventListener('mousedown', onMouseDown, true);
         container.removeEventListener('auxclick', onAuxClick, true);
         container.removeEventListener('wheel', onWheelCapture, true);
-        window.removeEventListener('mouseup', onMouseUp);
+        ownerWindow.removeEventListener('mouseup', onMouseUp, true);
     };
 }
