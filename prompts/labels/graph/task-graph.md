@@ -13,3 +13,4 @@ This feature is a WIP; implementation status/roadmap below:
 - [x] display tasks from `_done.md` as "Finished"
 - [x] status-based filters
 - [x] mouse handling for pan+zoom: right/middle drag pans, wheel zooms, Ctrl+wheel scrolls, middle-click fits the view
+- [x] hide auto-generated tasks in `_re.md` from the graph

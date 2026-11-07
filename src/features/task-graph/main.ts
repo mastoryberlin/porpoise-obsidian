@@ -14,7 +14,7 @@ import { readTaskSnapshot, writeTaskSnapshot, snapshotMatches, TaskSnapshotEntry
 import type { GraphGroup } from './groups';
 import { remapGraphReferences } from './groups';
 import { FilterCondition } from './taskFilters';
-import { GithubIssueRef, GithubIssueStatusService, isDoneNote, parseGithubIssueLink, githubIssueKey, TASK_STATUS_KEYS } from './githubIssues';
+import { GithubIssueRef, GithubIssueStatusService, isDoneNote, isExcludedNote, parseGithubIssueLink, githubIssueKey, TASK_STATUS_KEYS } from './githubIssues';
 import { doneNotePath, moveTaskSection } from './taskMove';
 
 export interface TextNodeData { id: string; text: string; x: number; y: number; }
@@ -369,7 +369,8 @@ export default class TaskGraphPlugin extends Plugin {
         await this.loadSnapshot();
         if (run !== this.cacheRun) return;
 
-        const files = this.app.vault.getMarkdownFiles();
+        // Tasks in excluded notes (e.g. `prep/_re.md`) are never indexed, so they never show in the graph.
+        const files = this.app.vault.getMarkdownFiles().filter(file => !isExcludedNote(file.path));
         const paths = new Set(files.map(file => file.path));
 
         for (const path of this.taskSnapshots.keys()) if (!paths.has(path)) this.taskSnapshots.delete(path);
@@ -410,6 +411,11 @@ export default class TaskGraphPlugin extends Plugin {
 
     async updateFileCache(file: import('obsidian').TAbstractFile, triggerRefresh = true) {
         if (!(file instanceof TFile) || file.extension !== 'md') return;
+        if (isExcludedNote(file.path)) {
+            if (this.taskSnapshots.delete(file.path)) this.scheduleSnapshot();
+            this.storeFileTasks(file.path, [], triggerRefresh);
+            return;
+        }
 
         const entry = this.taskSnapshots.get(file.path);
         if (this.snapshotSignature && snapshotMatches(entry, file.stat)) {
